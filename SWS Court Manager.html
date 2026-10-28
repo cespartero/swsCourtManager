@@ -1,0 +1,2070 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><title>SWS Court Manager (local)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: club-night scoreboard. Header bar, courts drawn top-down as a grid, queue column beside (stacks on phones). */
+:root{
+  --bg:#eef2f0; --surface:#ffffff; --ink:#14222b; --muted:#5b6b72; --line:#d3dcda;
+  --court:#2c6e8f; --court-deep:#1f5470; --court-line:#e9f3f6; --kitchen:#3b84a8;
+  --sun:#f29a2e; --sun-ink:#3d2405;
+  --new:#2e7d5b; --new-bg:#e1f2ea; --win:#a8620c; --win-bg:#fcecd6; --grin:#6a4fa3; --grin-bg:#ece6f7;
+  --danger:#b3372f; --focus:#f29a2e;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e171c; --surface:#16232a; --ink:#e6eef0; --muted:#94a6ad; --line:#2a3a42;
+  --court:#24607e; --court-deep:#1a4b63; --court-line:#cfe3ea; --kitchen:#2f7598;
+  --sun:#f5a84a; --sun-ink:#2b1903;
+  --new:#7fd4ac; --new-bg:#173328; --win:#f5bf73; --win-bg:#3a2a12; --grin:#c4b2ef; --grin-bg:#2a2340;
+  --danger:#f08b83; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e171c; --surface:#16232a; --ink:#e6eef0; --muted:#94a6ad; --line:#2a3a42;
+  --court:#24607e; --court-deep:#1a4b63; --court-line:#cfe3ea; --kitchen:#2f7598;
+  --sun:#f5a84a; --sun-ink:#2b1903;
+  --new:#7fd4ac; --new-bg:#173328; --win:#f5bf73; --win-bg:#3a2a12; --grin:#c4b2ef; --grin-bg:#2a2340;
+  --danger:#f08b83; color-scheme:dark;
+}
+html,body{min-height:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.ball{width:38px;height:38px;border-radius:50%;background:var(--sun);flex:none;position:relative;
+  background-image:radial-gradient(circle at 30% 30%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 68% 34%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 48% 66%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 24% 66%,var(--bg) 0 2.5px,transparent 3px),radial-gradient(circle at 76% 70%,var(--bg) 0 2.5px,transparent 3px)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,36px);line-height:1;letter-spacing:.01em;margin:0;text-transform:uppercase;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin-top:3px}
+.hdr-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;font-weight:600;min-height:44px}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.btn-sun{background:var(--sun);border-color:var(--sun);color:var(--sun-ink)}
+.btn-sun:hover{border-color:var(--sun-ink)}
+.btn-ghost{background:transparent}
+.btn-end{background:var(--danger);border-color:var(--danger);color:var(--surface)}
+.btn-end:hover{filter:brightness(1.08);border-color:var(--danger)}
+.btn-danger{color:var(--danger);border-color:var(--danger);background:transparent}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.pill.live{color:var(--new);border-color:var(--new)}
+.pill.live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--new)}
+.banner{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.banner p{margin:0;max-width:62ch}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
+.layout.stacked{grid-template-columns:minmax(0,1fr)}
+.layout.stacked>aside{width:auto}
+@media (max-width:940px){.layout{grid-template-columns:minmax(0,1fr)}}
+.section-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
+.section-h h2{font-family:var(--display);font-weight:700;font-size:22px;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.section-h span{color:var(--muted);font-size:13px}
+.courts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.court-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.court-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.court-num{font-family:var(--display);font-weight:800;font-size:26px;line-height:1;text-transform:uppercase}
+.court-time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.sess-clock{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.court-time b{color:var(--ink);font-weight:700;font-size:15px}
+.court{position:relative;border-radius:8px;background:var(--court);border:3px solid var(--court-line);display:grid;grid-template-rows:1fr 1fr;aspect-ratio:1/1.05;max-width:100%;overflow:hidden}
+.court::before,.court::after{content:"";position:absolute;left:0;right:0;height:16%;background:var(--kitchen);pointer-events:none}
+.court::before{top:34%;border-top:2px solid var(--court-line)}
+.court::after{bottom:34%;border-bottom:2px solid var(--court-line)}
+.net{position:absolute;left:-4px;right:-4px;top:50%;height:4px;margin-top:-2px;background:var(--court-line);z-index:2;box-shadow:0 0 0 1px var(--court-deep)}
+.centre{position:absolute;left:50%;width:2px;margin-left:-1px;background:var(--court-line);opacity:.8}
+.centre.t{top:0;height:34%}.centre.b{bottom:0;height:34%}
+.side{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 8px}
+.side .tag{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--court-line);opacity:.85}
+.names{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{background:var(--surface);color:var(--ink);border-radius:8px;padding:4px 9px;font-weight:600;font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.court.empty{display:flex;align-items:center;justify-content:center}
+.court.empty .side{grid-row:auto}
+.court.empty .msg{position:relative;z-index:3;background:var(--surface);color:var(--muted);padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600}
+.court .live-msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;background:var(--sun);color:var(--sun-ink);padding:5px 12px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;display:flex;flex-direction:column;align-items:center;line-height:1.25;text-align:center}
+.court .live-msg .mt{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.court .live-msg .mt b{font-size:15px;font-weight:800}
+.court .live-msg.get{background:var(--new);color:var(--surface)}
+.court .live-msg.fin{background:var(--surface);color:var(--ink)}
+.udclock{font-variant-numeric:tabular-nums}
+.udclock.big{font-size:17px}
+.ud-endround{flex:1 1 100%;min-height:52px;font-size:17px}
+.er-court{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.modal{max-height:calc(100vh - 32px);overflow-y:auto}
+.time-ctl input{box-sizing:border-box;width:64px;min-height:36px;font:inherit;font-weight:700;font-size:16px;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:4px}
+.time-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.time-pick .tp-lbl{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--muted)}
+.time-pick input{box-sizing:border-box;width:100%}
+.ud-focus{flex:none}
+body.timer-only header,body.timer-only .section-h,body.timer-only aside,body.timer-only #courts,body.timer-only #undoBar,body.timer-only #readonlyBanner{display:none!important}
+body.timer-only .layout{grid-template-columns:minmax(0,1fr)}
+body.timer-only #roundBar{min-height:calc(100vh - 60px);margin:0;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:center;text-align:center;gap:18px;border:0;background:var(--bg);font-size:24px;padding:16px}
+body.timer-only #roundBar>span{font-size:clamp(20px,3.2vw,34px);max-width:40ch}
+body.timer-only .udbig{flex:none}
+body.timer-only .ud-endround{flex:none}
+body.timer-only .udbig .udlbl{font-size:clamp(14px,2vw,22px)}
+body.timer-only .udbig .udnum{font-size:clamp(96px,24vw,340px)}
+body.timer-only .udbig.up .udnum{font-size:clamp(64px,14vw,200px)}
+body.timer-only .ud-endround,body.timer-only #udStart{flex:none;width:min(520px,100%);min-height:60px;font-size:20px}
+body.timer-only .ud-focus{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));z-index:15;background:var(--surface)}
+.udbig{flex:1 1 100%;display:flex;flex-direction:column;align-items:center;padding:4px 0 6px;color:var(--ink)}
+.udbig .udlbl{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.udbig .udnum{font-family:var(--display);font-weight:800;font-size:clamp(56px,12vw,140px);line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.udbig.up .udnum,.udbig.up .udlbl{color:var(--danger)}
+.udbig.up .udnum{font-size:clamp(40px,8vw,96px)}
+.court .live-msg .lm-t{display:block}
+[data-unalloc]{width:100%}
+[data-cancelm]{width:100%;color:var(--danger);border-color:var(--danger)}
+.s-cancel{color:var(--muted);background:var(--bg);border:1px solid var(--line)}
+.court .live-msg.walk{background:var(--new);color:var(--surface)}
+.court .live-msg.ending{background:var(--surface);color:var(--danger)}
+.court.empty .msg.ready{background:var(--new);color:var(--surface);font-weight:700}
+.free-panel{display:flex;flex-direction:column;gap:8px}
+.free-panel p{margin:0;font-weight:600;font-size:14px}
+.win-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.win-btns button{font-size:13px;line-height:1.25;text-align:center}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+form.add{display:flex;gap:8px}
+input[type=text],input[type=password],input[type=number]{font:inherit;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 12px;min-width:0;flex:1}
+.err{color:var(--danger);font-size:13px;margin:0}
+.next{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;font-size:15px;color:var(--muted)}
+.next strong{color:var(--ink)}
+ol.queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ol.queue li{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+ol.queue li:first-child{border-top:0}
+.pos{font-family:var(--display);font-weight:700;font-size:26px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pname{font-weight:600;font-size:19px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pmeta{font-size:13.5px;color:var(--muted)}
+.status-sel{border:1px solid currentColor;cursor:pointer;font-family:inherit;min-height:32px}
+.status-sel:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.status-sel option{color:var(--ink);background:var(--surface);text-transform:none}
+.status{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.s-new{color:var(--new);background:var(--new-bg)}
+.s-winner{color:var(--win);background:var(--win-bg)}
+.s-sit{color:var(--sun-ink);background:var(--sun)}
+table.res td.rd{white-space:nowrap}
+table.res td.rd .status{font-size:11px;padding:3px 8px}
+.s-grinner{color:var(--grin);background:var(--grin-bg)}
+ol.queue.reorder li{grid-template-columns:62px minmax(0,1fr) auto auto}
+.grip{display:inline-flex;align-items:center;justify-content:center;width:28px;height:36px;margin-right:4px;border-radius:8px;color:var(--muted);font-size:22px;font-family:var(--body);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;vertical-align:middle}
+.grip:hover{background:var(--bg);color:var(--ink)}
+.grip:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
+ol.queue li.lifting{opacity:.3}
+ol.queue li.drop-above{box-shadow:inset 0 3px 0 var(--sun)}
+ol.queue li.drop-below{box-shadow:inset 0 -3px 0 var(--sun)}
+.q-ghost{list-style:none;display:grid;grid-template-columns:62px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:12px 10px;background:var(--surface);border:1px solid var(--sun);border-radius:10px}
+.btn-back{background:var(--new);border-color:var(--new);color:var(--surface)}
+.btn-back:hover{border-color:var(--ink)}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+ol.queue li.sitting .pname,ol.queue li.sitting .pos{opacity:.5}
+ol.queue li.sitting .status{opacity:.55}
+.x{min-height:36px;padding:4px 10px;font-size:13px}
+.empty-q{color:var(--muted);font-size:14px;margin:0}
+.legend{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.legend div{display:flex;gap:8px;align-items:baseline}
+.modal-back{position:fixed;inset:0;background:rgba(10,18,22,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surface);border-radius:16px;padding:18px;width:min(420px,100%);display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.modal h3{font-family:var(--display);font-size:24px;text-transform:uppercase;margin:0}
+.modal p{margin:0;color:var(--muted);font-size:14px}
+label{font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.undo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--win-bg);color:var(--ink);border:1px solid var(--win);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:12px;font-size:14px}
+.undo span{min-width:0}
+.tbl-wrap{overflow-x:auto}
+table.res{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+table.res th{text-align:right;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:2px solid var(--line)}
+table.res td{text-align:right;padding:8px;border-bottom:1px solid var(--line)}
+table.res th:nth-child(2),table.res td.rn{text-align:left;width:100%}
+table.res th:first-child,table.res td:first-child{text-align:left;color:var(--muted);width:28px}
+table.res td.rn{font-weight:600;white-space:nowrap}
+table.res tr.top td{background:var(--win-bg)}
+table.res tr.top td.rn::after{content:" \2605";color:var(--win)}
+#copyFallback{width:100%;min-height:140px;font:inherit;font-size:13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px}
+.arrange{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;background:var(--surface);border:1px solid var(--sun);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.arrange p{margin:0;flex:1 1 220px;font-size:13px;color:var(--muted)}
+.arr-ctl{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+.arr-ctl button{min-height:36px;min-width:36px;padding:0;font-size:18px;line-height:1}
+.arr-ctl b{min-width:20px;text-align:center;color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums}
+.cell{min-height:96px;border:2px dashed var(--line);border-radius:12px;padding:6px;display:flex;min-width:0}
+.cell.target{border-color:var(--sun);background:var(--win-bg)}
+.cell-hint{margin:auto;font-size:12px;color:var(--muted)}
+.tile{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:8px;background:var(--court);color:var(--court-line);border:3px solid var(--court-line);font-family:var(--display);font-weight:800;font-size:22px;text-transform:uppercase;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:4px;min-width:0}
+.tile.sel{outline:3px solid var(--sun);outline-offset:2px}
+.tile.lifting{opacity:.35}
+.ghost{position:fixed;z-index:40;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.3);margin:0}
+.courts.laid{gap:12px}
+.courts.laid .court-card{padding:10px}
+.court-card{container-type:inline-size}
+@container (max-width:220px){
+  .court-num{font-size:20px}
+  .court-top{flex-wrap:wrap;gap:2px 8px}
+  .court-time{font-size:11px}
+  .court-time b{font-size:13px}
+  .chip{font-size:12px;padding:3px 6px}
+  .side{padding:6px 4px;gap:4px}
+  .side .tag{display:none}
+  .win-btns{grid-template-columns:1fr}
+  .court-card button{padding:8px;font-size:13px}
+}
+.roundbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--court);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:12px;font-size:14px}
+.roundbar span{min-width:0}
+.note{margin:0;font-size:13px;color:var(--muted)}
+fieldset.modes{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+fieldset.modes legend{font-size:13px;font-weight:600;color:var(--muted);padding:0;margin-bottom:6px}
+label.mode{flex-direction:row;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--muted);font-weight:500}
+label.mode:has(input:checked){border-color:var(--sun);background:var(--win-bg)}
+label.mode input{margin-top:3px;accent-color:var(--sun)}
+label.mode b{display:block;color:var(--ink);font-size:15px}
+.side .sgl-tag{font-size:11.5px;letter-spacing:.14em;opacity:1;color:var(--court-line);background:rgba(0,0,0,.18);padding:2px 8px;border-radius:999px;margin-bottom:-2px}
+.alloc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.alloc-grid button{min-height:44px;font-size:14px;line-height:1.2}
+.btn-singles{background:var(--court);border-color:var(--court);color:var(--court-line)}
+.btn-singles:disabled{opacity:.5}
+.ma-team{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+select.sel{box-sizing:border-box;font:inherit;font-size:15px;color:var(--ink);min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:8px 10px;width:100%}
+select.sel:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.score-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.score-row input{box-sizing:border-box;width:100%;font-size:18px;text-align:center}
+.rr{display:flex;flex-direction:column;gap:14px}
+.rr-block{display:flex;flex-direction:column;gap:8px}
+.rr-h{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+ul.rr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ul.rr-list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+ul.rr-list li:first-child{border-top:0}
+.rr-teams{display:flex;flex-direction:column;min-width:0;font-weight:600;font-size:15px}
+.rr-teams .vs{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rr-teams .won{color:var(--win)}
+.rr-teams .won::after{content:" \2713"}
+.rr-res{flex:none;font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
+.rr-res.live{color:var(--new);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+table.res.small{font-size:14px}
+table.res.small td{padding:6px}
+.history{padding-block:0 40px}
+table.stand-tbl th:nth-child(2){width:auto}
+table.stand-tbl td.rn{width:auto;min-width:120px}
+table.stand-tbl td .status{white-space:nowrap;font-size:11px}
+td.fm-cell{white-space:nowrap;text-align:left}
+.fm{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;border-radius:5px;font-size:11px;font-weight:800;margin-left:2px}
+.fm-W{background:var(--new-bg);color:var(--new)}
+.fm-L{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.fm-D{background:var(--win-bg);color:var(--win)}
+.stat-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;color:var(--ink)}
+.t-l{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.t-v{font-family:var(--display);font-weight:800;font-size:40px;line-height:1.1;font-variant-numeric:tabular-nums}
+.t-s{font-size:13px;color:var(--muted)}
+table.stat-tbl td,table.stat-tbl th{text-align:left;white-space:nowrap}
+table.stat-tbl th:nth-child(2){width:auto}
+.u-cell{min-width:170px}
+.u-wrap{display:flex;align-items:center;gap:8px}
+.ubar{flex:1;height:10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.ubar span{display:block;height:100%;background:var(--court)}
+.hist-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.hist-head h2{font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;margin:0}
+table.hist-tbl td,table.hist-tbl th{text-align:left;vertical-align:top}
+table.hist-tbl th:nth-child(2){width:auto}
+table.hist-tbl td.h-team{width:30%}
+table.hist-tbl td .status{white-space:nowrap}
+table.hist-tbl caption{text-align:left}
+.sk-cap{caption-side:top;text-align:left;font-size:13px;color:var(--muted);padding:2px 0 8px}
+table.hist-tbl td.h-score{font-weight:800;font-size:16px;white-space:nowrap;text-align:center}
+table.hist-tbl th.h-score-h{text-align:center}
+table.hist-tbl td.h-team{min-width:120px;width:auto}
+table.hist-tbl td.h-t{white-space:nowrap;color:var(--muted)}
+.h-won{color:var(--new);font-weight:700}
+.adm-state{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;vertical-align:1px}
+.adm-state.off{color:var(--muted);background:var(--bg);border:1px solid var(--line)}
+.adm-state.on{color:var(--sun-ink);background:var(--sun)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.court-card{transition:border-color .2s}.toast{animation:up .2s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}}
+</style>
+
+</head><body><script>
+// SWS Court Manager, local edition.
+// Replaces the claude.ai live database with this browser's own storage, so the board runs from this file
+// with no internet or sign-in. Data stays on this computer; tabs in the same browser stay in sync.
+(() => {
+  const KEY = "sws-court-manager:";
+  const SEED = {"club/state": {"matches": [], "players": {"pmvrnr4ckq4lt": {"court": 1, "games": 0, "name": "Carlo", "since": 1793164345796, "status": "playing", "wins": 0}, "pmvrnr6h5wajc": {"court": 1, "games": 0, "name": "Sam", "since": 1793164348553, "status": "playing", "wins": 0}, "pmvrnr86me9un": {"court": 1, "games": 0, "name": "Marc", "since": 1793164350766, "status": "playing", "wins": 0}, "pmvrnr9gaqv38": {"court": 1, "games": 0, "name": "Dom", "since": 1793164352410, "status": "playing", "wins": 0}, "pmvrnrbfdkqka": {"court": 2, "games": 0, "name": "Shane", "since": 1793164354969, "status": "playing", "wins": 0}, "pmvrnrdvxeoqz": {"court": 2, "games": 0, "name": "Sean", "since": 1793164358157, "status": "playing", "wins": 0}, "pmvrnrgt5lvdy": {"court": 2, "games": 0, "name": "April", "since": 1793164361945, "status": "playing", "wins": 0}, "pmvrnrwk5zszd": {"court": 2, "games": 0, "name": "Jenna", "since": 1793164382357, "status": "playing", "wins": 0}, "pmvrns03mb9fd": {"games": 0, "name": "Will", "since": 1793164386946, "status": "new", "wins": 0}, "pmvrns2bwiely": {"games": 0, "name": "Mark K", "since": 1793164389836, "status": "new", "wins": 0}}, "session": {"courts": [{"allocAt": 1793164399780, "num": 1, "prevQ": {"pmvrnr4ckq4lt": {"since": 1793164345796, "status": "new"}, "pmvrnr6h5wajc": {"since": 1793164348553, "status": "new"}, "pmvrnr86me9un": {"since": 1793164350766, "status": "new"}, "pmvrnr9gaqv38": {"since": 1793164352410, "status": "new"}}, "startedAt": 1793164459780, "teamA": ["pmvrnr4ckq4lt", "pmvrnr86me9un"], "teamB": ["pmvrnr6h5wajc", "pmvrnr9gaqv38"]}, {"allocAt": 1793164407188, "num": 2, "prevQ": {"pmvrnrbfdkqka": {"since": 1793164354969, "status": "new"}, "pmvrnrdvxeoqz": {"since": 1793164358157, "status": "new"}, "pmvrnrgt5lvdy": {"since": 1793164361945, "status": "new"}, "pmvrnrwk5zszd": {"since": 1793164382357, "status": "new"}}, "startedAt": 1793164467188, "teamA": ["pmvrnrbfdkqka", "pmvrnrgt5lvdy"], "teamB": ["pmvrnrdvxeoqz", "pmvrnrwk5zszd"]}, {"num": 3, "startedAt": null, "teamA": null, "teamB": null}, {"num": 4, "startedAt": null, "teamA": null, "teamB": null}, {"num": 5, "startedAt": null, "teamA": null, "teamB": null}, {"num": 6, "startedAt": null, "teamA": null, "teamB": null}], "mode": "std", "startedAt": 1793164325270}}, "club/settings": {"courtCount": 6, "pinHash": "28ae0de525e137a8b28fe72a10e3989a529e761e836d499242191c3a4f7e08cc", "udMinutes": 1, "udSeconds": 10}};
+  const mem = {};
+  const read = (p) => { try { const v = localStorage.getItem(KEY + p); return v == null ? undefined : JSON.parse(v); } catch { return mem[p]; } };
+  const store = (p, d) => { try { if (d === undefined) localStorage.removeItem(KEY + p); else localStorage.setItem(KEY + p, JSON.stringify(d)); } catch { if (d === undefined) delete mem[p]; else mem[p] = d; } };
+  try { if (!localStorage.getItem(KEY + "seeded")) { Object.entries(SEED).forEach(([p, d]) => store(p, d)); localStorage.setItem(KEY + "seeded", new Date().toISOString()); } }
+  catch { Object.entries(SEED).forEach(([p, d]) => { mem[p] = d; }); }
+  const subs = {};
+  const snap = (p) => { const d = read(p); return { id: p.split("/").pop(), exists: d !== undefined, data: () => (d === undefined ? undefined : JSON.parse(JSON.stringify(d))), metadata: { fromCache: false, hasPendingWrites: false } }; };
+  const notify = (p) => (subs[p] || []).forEach(cb => { try { cb(snap(p)); } catch (e) { console.error(e); } });
+  window.addEventListener("storage", (e) => { if (e.key && e.key.startsWith(KEY)) notify(e.key.slice(KEY.length)); });
+  const write = (p, d) => { store(p, d); setTimeout(() => notify(p), 0); };
+  const db = {
+    doc: (p) => ({
+      id: p.split("/").pop(), path: p,
+      get: async () => snap(p),
+      set: async (d) => write(p, JSON.parse(JSON.stringify(d))),
+      update: async (d) => write(p, { ...(read(p) || {}), ...JSON.parse(JSON.stringify(d)) }),
+      delete: async () => write(p, undefined),
+      acquire: async () => ({ acquired: true }),
+      onSnapshot(cb) { (subs[p] = subs[p] || []).push(cb); setTimeout(() => cb(snap(p)), 0); return () => { subs[p] = (subs[p] || []).filter(x => x !== cb); }; },
+    }),
+  };
+  const user = { can: async () => true, isOwner: async () => true, canEdit: async () => true, id: async () => "local", me: async () => ({ id: "local", name: "", isMe: true }) };
+  window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? user : null) };
+  // Backup and restore, offered in the Admin menu of this edition.
+  window.__localEdition = {
+    backup() {
+      const data = { app: "SWS Court Manager", saved: new Date().toISOString(), docs: { "club/state": read("club/state"), "club/settings": read("club/settings") } };
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      a.download = `sws-court-manager-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+    },
+    restore(text) {
+      const data = JSON.parse(text);
+      if (!data || !data.docs || !data.docs["club/state"]) throw new Error("not a backup");
+      Object.entries(data.docs).forEach(([p, d]) => store(p, d));
+      location.reload();
+    },
+  };
+})();
+</script>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="ball" aria-hidden="true"></div>
+      <div>
+        <h1>SWS Court Manager</h1><div class="sub" style="font-weight:700;color:var(--win)">Local edition: data is saved in this browser only</div>
+        <div class="sub" id="subline">Connecting…</div>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <span class="pill" id="sessPill">No session</span>
+      <button id="endBtn" class="btn-danger" hidden>End session</button>
+      <button id="standBtn" class="btn-ghost">Standings</button>
+      <button id="statBtn" class="btn-ghost">Session status</button>
+      <button id="histBtn" class="btn-ghost">Match history</button>
+      <button id="adminBtn" class="btn-ghost">Admin</button>
+    </div>
+  </header>
+
+  <div class="banner" id="readonlyBanner" hidden>
+    <p>You're viewing the board live. To add your name, use the club device at the desk.</p>
+  </div>
+
+  <div class="layout">
+    <section aria-labelledby="courtsH">
+      <div class="section-h"><h2 id="courtsH">Courts</h2><span id="courtSummary"></span></div>
+      <div id="undoBar" class="undo" hidden></div>
+      <div id="roundBar" class="roundbar" hidden></div>
+      <div id="arrangeBar" class="arrange" hidden>
+        <div class="arr-ctl"><span>Columns</span><button type="button" id="cMinus" aria-label="Fewer columns">−</button><b id="arrCols">3</b><button type="button" id="cPlus" aria-label="More columns">+</button></div>
+        <div class="arr-ctl"><span>Rows</span><button type="button" id="rMinus" aria-label="Fewer rows">−</button><b id="arrRows">2</b><button type="button" id="rPlus" aria-label="More rows">+</button></div>
+        <p>Drag a court to a new spot, or tap a court and then tap where it goes. Leave spaces empty for walkways or gaps.</p>
+        <div class="row" style="flex:none"><button type="button" id="arrReset" class="btn-ghost">Reset layout</button><button type="button" id="arrDone" class="btn-sun">Done</button></div>
+      </div>
+      <div id="courts" class="courts"></div>
+    </section>
+
+    <aside class="panel" aria-labelledby="queueH">
+      <div class="section-h" style="margin:0"><h2 id="queueH">Queue</h2><span id="queueCount"></span></div>
+      <form class="add" id="addForm" autocomplete="off">
+        <input type="text" id="nameInput" maxlength="30" placeholder="Your name" aria-label="Your name">
+        <button type="submit" class="btn-sun">Join</button>
+      </form>
+      <p class="err" id="addErr" hidden></p>
+      <div class="next" id="nextUp" hidden></div>
+      <ol class="queue" id="queue"></ol>
+      <div id="rrPanel" class="rr" hidden></div>
+      <div class="legend" id="legend">
+        <div><span class="status s-new">New</span> Just joined. Goes on first.</div>
+        <div><span class="status s-winner">Winner</span> Won their last game.</div>
+        <div><span class="status s-grinner">Grinner</span> Lost their last game.</div>
+        <div>A free court takes new players first, then up to 2 winners and 2 grinners, longest waiting first. Anyone sitting out keeps their place but is skipped.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<section id="historyView" class="wrap history" hidden></section>
+<section id="statusView" class="wrap history" hidden></section>
+<section id="standView" class="wrap history" hidden></section>
+
+<div id="modalRoot"></div>
+
+<script>
+(() => {
+  const TAB = "tab-" + Math.random().toString(36).slice(2);
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let toastTimer = null;
+  function toast(msg) {
+    let t = document.getElementById("toast");
+    if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+  const EMPTY = () => ({ session: null, players: {} });
+
+  let db = null, stateRef = null, settingsRef = null;
+  let state = EMPTY(), settings = {};
+  let canWrite = true, connected = false;
+  let adminUntil = 0;           // admin unlock, this device only
+  let freeingCourt = null;      // court number showing the "who won?" panel
+  const fmtHM = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+  let frozenAt = null;          // when End match was tapped; stops that court's match time
+  const fmtDur = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60, p = (n) => String(n).padStart(2, "0"); return h ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`; };
+
+  // ---------- pure rules ----------
+  const RANK = { new: 0, winner: 1, grinner: 2 };
+  const WALK_ON_MS = 60000;
+  function waiting(s) {
+    return Object.entries(s.players)
+      .filter(([, p]) => p.status in RANK)
+      .sort((a, b) => a[1].since - b[1].since)
+      .map(([id]) => id);
+  }
+  // Players who are sitting out keep their place in the queue but are skipped for allocation.
+  const eligible = (s) => waiting(s).filter(id => !s.players[id].sitOut);
+  // Picks the next players from the queue: new players first, then up to half the spots each
+  // for winners and grinners, longest waiting first. n is 4 for doubles, 2 for singles.
+  function pickPlayers(s, n) {
+    const q = eligible(s), P = s.players, picks = [], cap = n / 2;
+    for (const id of q) { if (picks.length === n) break; if (P[id].status === "new") picks.push(id); }
+    let w = 0, g = 0;
+    for (const id of q) {
+      if (picks.length === n) break;
+      if (picks.includes(id)) continue;
+      const st = P[id].status;
+      if (st === "winner" && w < cap) { picks.push(id); w++; }
+      else if (st === "grinner" && g < cap) { picks.push(id); g++; }
+    }
+    // If the caps leave gaps, fill from whoever has waited longest so courts never sit idle.
+    for (const id of q) { if (picks.length === n) break; if (!picks.includes(id)) picks.push(id); }
+    if (picks.length < n) return null;
+    if (n === 2) return { teamA: [picks[0]], teamB: [picks[1]] };
+    // Spread statuses across teams so two winners don't stay paired.
+    const ord = picks.slice().sort((a, b) => RANK[P[a].status] - RANK[P[b].status]);
+    return { teamA: [ord[0], ord[2]], teamB: [ord[1], ord[3]] };
+  }
+  const pickFour = (s) => pickPlayers(s, 4);
+  // Keep each player's queue status and place, so a court can be unallocated during walk-on.
+  function rememberQueue(s, court, ids) {
+    court.prevQ = {};
+    ids.forEach(id => { const p = s.players[id]; if (p) court.prevQ[id] = { status: p.status, since: p.since }; });
+  }
+  function fillCourt(s, court, now, n = 4) {
+    const pick = pickPlayers(s, n);
+    if (!pick) return false;
+    // Allocated courts get 1 minute of walk-on time before the match clock starts.
+    court.teamA = pick.teamA; court.teamB = pick.teamB; court.startedAt = now + WALK_ON_MS; court.allocAt = now;
+    rememberQueue(s, court, [...pick.teamA, ...pick.teamB]);
+    [...pick.teamA, ...pick.teamB].forEach(id => { s.players[id].status = "playing"; s.players[id].court = court.num; });
+    return true;
+  }
+  function fillEmpty(s, now, first) {
+    if (!s.session) return;
+    const courts = s.session.courts.slice().sort((a, b) => (a.num === first ? -1 : b.num === first ? 1 : a.num - b.num));
+    for (const c of courts) if (!c.teamA) { if (!fillCourt(s, c, now)) break; }
+  }
+
+  // ---------- round robin ----------
+  // Builds rounds of doubles matches until every pair of players has faced each other at least once.
+  // Partners rotate where possible; when there are more players than court spaces, the people with
+  // the fewest games so far play next, so sit-outs are shared.
+  function makeSchedule(ids, courts) {
+    const n = ids.length, per = Math.max(1, Math.min(courts, Math.floor(n / 4)));
+    const key = (a, b) => a < b ? a + "|" + b : b + "|" + a;
+    const opp = new Set(), part = new Set(), games = {};
+    ids.forEach(i => games[i] = 0);
+    const need = n * (n - 1) / 2;
+    const tries = n <= 12 ? 150 : n <= 16 ? 50 : n <= 24 ? 15 : 5;
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const rounds = [];
+    while (opp.size < need && rounds.length < 60) {
+      let best = null;
+      for (let t = 0; t < tries; t++) {
+        const order = shuffle(ids.slice()).sort((a, b) => games[a] - games[b]);
+        const pool = shuffle(order.slice(0, per * 4));
+        const matches = []; let total = 0;
+        while (pool.length >= 4) {
+          const p = pool.shift(); let bm = null;
+          for (let i = 0; i < pool.length; i++) for (let j = 0; j < pool.length; j++) {
+            if (j === i) continue;
+            for (let k = j + 1; k < pool.length; k++) {
+              if (k === i) continue;
+              const A = [p, pool[i]], B = [pool[j], pool[k]];
+              let newOpp = 0; for (const x of A) for (const y of B) if (!opp.has(key(x, y))) newOpp++;
+              const sc = newOpp * 10 + (part.has(key(A[0], A[1])) ? 0 : 3) + (part.has(key(B[0], B[1])) ? 0 : 3);
+              if (!bm || sc > bm.sc) bm = { sc, A, B, newOpp, idx: [i, j, k] };
+            }
+          }
+          bm.idx.sort((a, b) => b - a).forEach(x => pool.splice(x, 1));
+          matches.push(bm); total += bm.sc;
+        }
+        if (!best || total > best.total) best = { total, matches };
+      }
+      const ms = best.matches.filter(m => m.newOpp > 0);
+      if (!ms.length) break;
+      const active = new Set();
+      for (const m of ms) {
+        for (const x of m.A) for (const y of m.B) opp.add(key(x, y));
+        part.add(key(m.A[0], m.A[1])); part.add(key(m.B[0], m.B[1]));
+        [...m.A, ...m.B].forEach(x => { games[x]++; active.add(x); });
+      }
+      rounds.push({ matches: ms.map(m => ({ teamA: m.A, teamB: m.B })), byes: ids.filter(x => !active.has(x)) });
+    }
+    return rounds;
+  }
+  const isRR = (s) => !!(s.session && s.session.mode === "rr");
+  function courtOrder(n) {
+    const nums = Array.from({ length: n }, (_, i) => i + 1), L = layoutFor(n);
+    return L ? nums.sort((a, b) => cellKey(L, a) - cellKey(L, b)) : nums;
+  }
+  function allocateRoundIn(s, now) {
+    const rr = s.session.rr;
+    const idx = rr.rounds.findIndex(r => r.status !== "done");
+    if (idx < 0) return false;
+    const round = rr.rounds[idx];
+    if (round.status === "playing" || s.session.courts.some(c => c.teamA)) return false;
+    const order = courtOrder(s.session.courts.length);
+    round.matches.forEach((m, i) => {
+      const c = s.session.courts.find(c => c.num === order[i]);
+      c.teamA = m.teamA.slice(); c.teamB = m.teamB.slice(); c.startedAt = now; c.allocAt = now; c.rr = { r: idx, m: i };
+      m.court = c.num; m.status = "playing";
+      [...m.teamA, ...m.teamB].forEach(id => { const p = s.players[id]; if (p) { p.status = "playing"; p.court = c.num; } });
+    });
+    round.status = "playing"; rr.current = idx;
+    return true;
+  }
+
+  // ---------- court up down ----------
+  // Rounds start and end together. Winners move one court toward court 1, losers one court away.
+  // New teams pair a winner with a loser wherever the court has both; otherwise last partners are split.
+  // When there are more players than spaces, the people who have sat out least sit next, so games stay level.
+  const isUD = (s) => !!(s.session && s.session.mode === "ud");
+  const isTour = (s) => isRR(s) || isUD(s);
+  const shuf = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function bestTeams(four, info) {
+    const parts = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+    const mix = four.some(id => info[id].won) && four.some(id => !info[id].won);
+    let best = null;
+    for (const [x, y] of shuf(parts.slice())) {
+      const teams = [x.map(i => four[i]), y.map(i => four[i])];
+      let pen = 0;
+      for (const [a, b] of teams) {
+        if (mix && info[a].won === info[b].won) pen += 10;
+        if (info[a].partner === b) pen += 5;
+        if (info[a].from != null && info[a].from === info[b].from) pen += 2;
+      }
+      if (!best || pen < best.pen) best = { pen, teams };
+    }
+    return best.teams;
+  }
+  // Round length is kept in seconds; older sessions stored whole minutes.
+  const udSecs = (ud) => ud.seconds != null ? ud.seconds : (ud.minutes || 12) * 60;
+  const fmtMS = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+  function udInitial(s, ids, timed, seconds) {
+    const n = s.session.courts.length, per = Math.min(n, Math.floor(ids.length / 4));
+    const sits = {};
+    ids.slice(per * 4).forEach(id => sits[id] = 1);
+    s.session.ud = { timed, seconds, round: 1, completed: 0, state: "ready", startAt: null, endAt: null, per, sitting: ids.slice(per * 4), sits };
+    for (let k = 0; k < per; k++) {
+      const f = ids.slice(k * 4, k * 4 + 4), c = s.session.courts[k];
+      c.teamA = [f[0], f[2]]; c.teamB = [f[1], f[3]]; c.startedAt = null; delete c.done;
+    }
+  }
+  function udNext(s) {
+    const ud = s.session.ud, per = ud.per;
+    const courts = s.session.courts.filter(c => c.teamA);
+    const info = {}, incoming = Array.from({ length: per + 1 }, () => []);
+    for (const c of courts) {
+      const W = c.done.winner === "A" ? c.teamA : c.teamB, L = c.done.winner === "A" ? c.teamB : c.teamA;
+      W.forEach(id => { info[id] = { won: true, from: c.num, partner: W.find(x => x !== id) }; incoming[Math.max(1, c.num - 1)].push(id); });
+      L.forEach(id => { info[id] = { won: false, from: c.num, partner: L.find(x => x !== id) }; incoming[Math.min(per, c.num + 1)].push(id); });
+    }
+    if (ud.sitting.length) {
+      // Next sitters: whoever has sat out least, preferring people who just played over people who just sat.
+      const played = courts.flatMap(c => [...c.teamA, ...c.teamB]), sat = new Set(ud.sitting);
+      const next = shuf([...played, ...ud.sitting]).sort((a, b) => ((ud.sits[a] || 0) - (ud.sits[b] || 0)) || (sat.has(a) - sat.has(b))).slice(0, ud.sitting.length);
+      const nextSet = new Set(next);
+      const leaving = played.filter(id => nextSet.has(id)), back = shuf(ud.sitting.filter(id => !nextSet.has(id)));
+      leaving.forEach((id, i) => {
+        const r = back[i];
+        for (const arr of incoming) { const j = arr.indexOf(id); if (j >= 0) { arr[j] = r; info[r] = { won: info[id].won, from: null, partner: null }; } }
+      });
+      next.forEach(id => { ud.sits[id] = (ud.sits[id] || 0) + 1; });
+      ud.sitting = next;
+    }
+    for (const c of courts) {
+      const [A, B] = bestTeams(incoming[c.num], info);
+      c.teamA = A; c.teamB = B; c.startedAt = null; delete c.done;
+    }
+    ud.round += 1; ud.state = "ready"; ud.startAt = null; ud.endAt = null;
+  }
+  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+  // Rounds until everyone has played the same number of games again, and the games each person plays in that time.
+  function udCycle(players, spots) {
+    const sit = Math.max(0, players - spots);
+    if (!sit) return { rounds: 1, games: 1, sit: 0 };
+    const rounds = players / gcd(players, sit);
+    return { rounds, games: rounds - sit / gcd(players, sit), sit };
+  }
+  // "Round 3 of 5": the total is the next round where everyone has played the same number of games.
+  function udRoundOf(s) {
+    const ud = s.session.ud, cy = udCycle(Object.keys(s.players).length, ud.per * 4);
+    if (!cy.sit) return `Round ${ud.round}`;
+    return `Round ${ud.round} of ${Math.ceil(ud.round / cy.rounds) * cy.rounds}`;
+  }
+  function udParts(ud, now) {
+    if (!ud || ud.state !== "playing") return { label: "", value: "", up: false };
+    if (now < ud.startAt) return { label: "Setup", value: fmtDur(ud.startAt - now + 999), up: false };
+    if (ud.timed) { const left = ud.endAt - now; return left > 0 ? { label: "Time left", value: fmtDur(left + 999), up: false } : { label: "Round over", value: "Time's up", up: true }; }
+    return { label: "Match time", value: fmtDur(now - ud.startAt), up: false };
+  }
+  function udClock(ud, now) {
+    if (!ud || ud.state !== "playing") return "";
+    if (now < ud.startAt) return `Setup ${fmtDur(ud.startAt - now + 999)}`;
+    if (ud.timed) { const left = ud.endAt - now; return left > 0 ? `${fmtDur(left + 999)} left` : "Time's up"; }
+    return fmtDur(now - ud.startAt);
+  }
+
+  // ---------- store ----------
+  async function mutate(fn) {
+    if (!stateRef) { toast("Not connected yet. Try again in a moment."); return false; }
+    for (let i = 0; i < 8; i++) {
+      let lease;
+      try { lease = await stateRef.acquire({ holder: TAB, ttlMs: 5000 }); }
+      catch (e) { return fail(e); }
+      if (!lease.acquired) { await sleep(250 + Math.random() * 400); continue; }
+      try {
+        const snap = await stateRef.get();
+        const s = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : EMPTY();
+        s.players = s.players || {};
+        const res = fn(s, Date.now());
+        if (res === false) return false;
+        await stateRef.set(s);
+        return true;
+      } catch (e) { return fail(e); }
+    }
+    toast("Someone else is updating the board. Try again.");
+    return false;
+  }
+  function fail(e) {
+    if (e && e.code === "invalid_argument") { canWrite = false; render(); toast("This device can view the board but can't change it."); }
+    else if (e && e.code === "quota_exceeded") toast("The board's storage is full. End the session to clear it.");
+    else toast("Couldn't save that. Check the connection and try again.");
+    return false;
+  }
+
+  // ---------- PIN ----------
+  async function hashPin(pin) {
+    const data = new TextEncoder().encode("southwest-suns:" + pin);
+    try {
+      const buf = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    } catch {
+      let h = 2166136261; for (const b of data) { h ^= b; h = Math.imul(h, 16777619); } return "f" + (h >>> 0).toString(16);
+    }
+  }
+  const isAdmin = () => Date.now() < adminUntil;
+  // The Admin button always shows whether admin tools are unlocked on this device.
+  function setAdminLabel() {
+    const b = document.getElementById("adminBtn"); if (!b) return;
+    const on = isAdmin();
+    b.innerHTML = `Admin <span class="adm-state ${on ? "on" : "off"}">${on ? "Unlocked" : "Locked"}</span>`;
+    b.setAttribute("aria-label", on ? "Admin, unlocked" : "Admin, locked");
+  }
+
+  // ---------- modal ----------
+  function modal(html, bind) {
+    const root = $("modalRoot");
+    root.innerHTML = `<div class="modal-back" id="mBack"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+    const close = () => { root.innerHTML = ""; };
+    $("mBack").addEventListener("click", e => { if (e.target.id === "mBack") close(); });
+    root.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", close));
+    bind && bind(close);
+    const f = root.querySelector("input"); f && f.focus();
+  }
+  function requirePin(reason, then) {
+    if (isAdmin()) return then();
+    const hasPin = !!settings.pinHash;
+    modal(`
+      <h3>${hasPin ? "Admin PIN" : "Set admin PIN"}</h3>
+      <p>${hasPin ? esc(reason) : "Choose a PIN for starting sessions and managing the queue. You'll need it on every device."}</p>
+      <form id="pinForm" style="display:flex;flex-direction:column;gap:10px">
+        <label>PIN<input type="password" id="pin1" inputmode="numeric" minlength="4" maxlength="12" autocomplete="off"></label>
+        ${hasPin ? "" : `<label>Repeat PIN<input type="password" id="pin2" inputmode="numeric" maxlength="12" autocomplete="off"></label>`}
+        <p class="err" id="pinErr" hidden></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">${hasPin ? "Unlock" : "Save PIN"}</button></div>
+      </form>`, (close) => {
+      $("pinForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const p1 = $("pin1").value.trim(), err = $("pinErr");
+        const show = (m) => { err.textContent = m; err.hidden = false; };
+        if (p1.length < 4) return show("Use at least 4 digits.");
+        const h = await hashPin(p1);
+        if (!hasPin) {
+          if (p1 !== $("pin2").value.trim()) return show("The two PINs don't match.");
+          try { await settingsRef.set({ ...settings, pinHash: h }); } catch (e2) { fail(e2); return; }
+        } else if (h !== settings.pinHash) return show("That PIN isn't right.");
+        adminUntil = Date.now() + 30 * 60 * 1000;
+        close(); render(); then();
+      });
+    });
+  }
+
+  // ---------- actions ----------
+  async function addPlayer(name) {
+    const err = $("addErr"); err.hidden = true;
+    name = name.replace(/\s+/g, " ").trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    let dup = false, closed = false;
+    const ok = await mutate((s, now) => {
+      if (isTour(s)) { closed = true; return false; }
+      if (Object.values(s.players).some(p => p.name.toLowerCase() === key)) { dup = true; return false; }
+      const id = "p" + now.toString(36) + Math.random().toString(36).slice(2, 6);
+      s.players[id] = { name, status: "new", since: now, games: 0, wins: 0 };
+    });
+    if (closed) { err.textContent = "Entries are closed while the tournament is running."; err.hidden = false; return; }
+    if (dup) { err.textContent = `${name} is already on the board. Add a surname initial to tell people apart.`; err.hidden = false; return; }
+    if (ok) { $("nameInput").value = ""; toast(`${name} joined the queue`); }
+  }
+
+  // ---------- match history ----------
+  // Every result is logged with the names as they were at the time; the newest 300 are kept.
+  function logMatch(s, c, winner, sa, sb, ms) {
+    const nm = (ids) => ids.map(id => s.players[id]?.name || "?");
+    const mode = s.session.mode || "std";
+    const entry = { t: Date.now(), court: c.num, mode, A: nm(c.teamA), B: nm(c.teamB), w: winner };
+    if (c.teamA.length === 1) entry.singles = true;
+    if (Number.isFinite(sa) && Number.isFinite(sb)) { entry.sa = sa; entry.sb = sb; }
+    if (ms != null) entry.ms = Math.max(0, ms);
+    if (mode === "rr" && c.rr) entry.round = c.rr.r + 1;
+    if (mode === "ud") entry.round = s.session.ud.round;
+    s.matches = [...(s.matches || []), entry].slice(-300);
+  }
+
+  // Undo an allocation during walk-on: the four players go back to their old queue places and status.
+  function confirmCancel(num) {
+    const c = state.session && state.session.courts.find(x => x.num === num);
+    if (!c || !c.teamA) return;
+    modal(`
+      <h3>Cancel court ${num} match?</h3>
+      <p>${names(c.teamA)} vs ${names(c.teamB)} goes in the match history as cancelled, with no winner. Nobody's wins or games change, and the players go to the back of the queue.</p>
+      <div class="row"><button type="button" data-close>Keep playing</button><button type="button" class="btn-danger" id="cmGo">Cancel match</button></div>`, (close) => {
+      $("cmGo").addEventListener("click", () => { close(); cancelMatch(num); });
+    });
+  }
+
+  async function unallocate(num) {
+    freeingCourt = null; frozenAt = null;
+    const ok = await mutate((s, now) => {
+      const c = s.session && s.session.courts.find(x => x.num === num);
+      if (!c || !c.teamA || isTour(s) || now >= c.startedAt) return false;
+      const prev = c.prevQ || {};
+      [...c.teamA, ...c.teamB].forEach(id => {
+        const p = s.players[id]; if (!p) return;
+        p.status = prev[id] ? prev[id].status : "new";
+        if (prev[id] && prev[id].since != null) p.since = prev[id].since;
+        delete p.court;
+      });
+      delete c.allocAt;
+      c.teamA = null; c.teamB = null; c.startedAt = null; delete c.prevQ;
+    });
+    if (ok) toast(`Court ${num} unallocated. The players are back in the queue.`);
+    else toast("Walk on time is over, so use End match instead.");
+  }
+
+  // Cancel a match that's under way: it goes in the history as cancelled with no winner,
+  // nobody's record changes, and the four players go to the back of the queue with the status they had.
+  async function cancelMatch(num) {
+    const endAt = Date.now();
+    freeingCourt = null; frozenAt = null;
+    const ok = await mutate((s, now) => {
+      const c = s.session && s.session.courts.find(x => x.num === num);
+      if (!c || !c.teamA || isTour(s)) return false;
+      const prev = JSON.parse(JSON.stringify({ session: s.session, players: s.players }));
+      s.lastAction = { court: num, cancelled: true, winners: [], at: now, prev, mlen: (s.matches || []).length };
+      logMatch(s, c, "X", null, null, c.startedAt ? endAt - c.startedAt : null);
+      const was = c.prevQ || {};
+      [...c.teamA, ...c.teamB].forEach((id, i) => {
+        const p = s.players[id]; if (!p) return;
+        p.status = was[id] ? was[id].status : "new"; p.since = now + i; delete p.court;
+      });
+      c.lastMatchMs = c.startedAt ? Math.max(0, endAt - c.startedAt) : null;
+      logOccupancy(s, c, endAt);
+      c.teamA = null; c.teamB = null; c.startedAt = null; delete c.prevQ;
+    });
+    if (ok) toast(`Court ${num} match cancelled. No result was recorded for the players.`);
+  }
+
+  // Court occupancy log for the Session status page: when each court was taken and when it came free.
+  function logOccupancy(s, c, endAt) {
+    if (c.allocAt != null) s.session.occ = [...(s.session.occ || []), { c: c.num, a: c.allocAt, e: Math.max(c.allocAt, endAt) }].slice(-600);
+    delete c.allocAt;
+  }
+
+  async function courtFree(num, winner, sa, sb) {
+    const endAt = frozenAt || Date.now();
+    freeingCourt = null; frozenAt = null;
+    await mutate((s, now) => {
+      if (!s.session) return false;
+      const c = s.session.courts.find(c => c.num === num);
+      if (!c || !c.teamA) return false;
+      const prev = JSON.parse(JSON.stringify({ session: s.session, players: s.players }));
+      s.lastAction = { court: num, winners: (winner === "A" ? c.teamA : c.teamB).map(id => s.players[id]?.name || "?"), at: now, prev, mlen: (s.matches || []).length };
+      if (!(isUD(s) && (s.session.ud.state !== "playing" || c.done || winner === "D"))) logMatch(s, c, winner, sa, sb, c.startedAt ? endAt - c.startedAt : null);
+      if (isUD(s)) {
+        if (s.session.ud.state !== "playing" || c.done || winner === "D") return false;
+        udRecord(s, c, winner, sa, sb, endAt);
+        if (Number.isFinite(sa) && Number.isFinite(sb)) s.lastAction.score = winner === "A" ? `${sa}–${sb}` : `${sb}–${sa}`;
+        if (udFinishIfDone(s)) s.lastAction.roundEnded = true;
+        return;
+      }
+      if (isRR(s) && c.rr) {
+        const round = s.session.rr.rounds[c.rr.r], m = round && round.matches[c.rr.m];
+        const scored = Number.isFinite(sa) && Number.isFinite(sb), draw = winner === "D", aWon = winner === "A";
+        const upd = (ids, won, pf, pa) => ids.forEach(id => {
+          const p = s.players[id]; if (!p) return;
+          p.status = "rr"; delete p.court; p.games = (p.games || 0) + 1;
+          if (draw) p.draws = (p.draws || 0) + 1; else if (won) p.wins = (p.wins || 0) + 1; p.hist = [...(p.hist || []), draw ? "D" : won ? "W" : "L"].slice(-20);
+          if (scored) { p.pf = (p.pf || 0) + pf; p.pa = (p.pa || 0) + pa; }
+        });
+        upd(c.teamA, aWon, sa, sb); upd(c.teamB, !aWon, sb, sa);
+        if (m) { m.status = "done"; m.winner = winner; if (scored) { m.scoreA = sa; m.scoreB = sb; } }
+        if (round && round.matches.every(x => x.status === "done")) round.status = "done";
+        if (draw) s.lastAction.draw = true;
+        if (scored) s.lastAction.score = aWon || draw ? `${sa}–${sb}` : `${sb}–${sa}`;
+        c.lastMatchMs = c.startedAt ? endAt - c.startedAt : null;
+        logOccupancy(s, c, endAt);
+        c.teamA = null; c.teamB = null; c.startedAt = null; delete c.rr;
+        return;
+      }
+      const set = (ids, status, won, off) => ids.forEach((id, i) => {
+        const p = s.players[id]; if (!p) return;
+        p.status = status; p.since = now + off + i; p.games = (p.games || 0) + 1; if (won) p.wins = (p.wins || 0) + 1; delete p.court;
+        p.hist = [...(p.hist || []), won ? "W" : "L"].slice(-20);
+      });
+      const winIds = winner === "A" ? c.teamA : c.teamB, loseIds = winner === "A" ? c.teamB : c.teamA;
+      set(winIds, "winner", true, 0); set(loseIds, "grinner", false, 2);
+      c.lastMatchMs = c.startedAt ? Math.max(0, endAt - c.startedAt) : null;
+      logOccupancy(s, c, endAt);
+      c.teamA = null; c.teamB = null; c.startedAt = null;
+    });
+    render();
+  }
+
+  async function allocateCourt(num, n = 4) {
+    let short = false;
+    const ok = await mutate((s, now) => {
+      const c = s.session?.courts.find(c => c.num === num);
+      if (!c || c.teamA) return false;
+      if (!fillCourt(s, c, now, n)) { short = true; return false; }
+    });
+    if (short) toast(`Not enough players waiting. ${n === 2 ? "Singles needs 2." : "Doubles needs 4."}`);
+    else if (ok) toast(`Court ${num} allocated for ${n === 2 ? "singles" : "doubles"}`);
+  }
+
+  function manualAllocate(num, n = 4) {
+    const q = eligible(state), single = n === 2;
+    if (q.length < n) return toast(`${single ? "Singles needs 2" : "Doubles needs 4"} players waiting in the queue who aren't sitting out.`);
+    const sug = pickPlayers(state, n), pre = sug ? [...sug.teamA, ...sug.teamB] : q.slice(0, n);
+    const label = { new: "New", winner: "Winner", grinner: "Grinner" };
+    const opts = (sel) => `<option value="">Choose a player</option>` + q.map(id => {
+      const p = state.players[id];
+      return `<option value="${id}"${id === sel ? " selected" : ""}>${esc(p.name)} (${label[p.status]})</option>`;
+    }).join("");
+    const slot = (i, txt) => `<label>${txt}<select id="ma${i}" class="sel">${opts(pre[i])}</select></label>`;
+    modal(`
+      <h3>Court ${num}: manual ${single ? "singles" : "doubles"}</h3>
+      <p>Choose who goes on. It starts with the players the rules would pick, so change only who you need to.</p>
+      <form id="maForm" style="display:flex;flex-direction:column;gap:10px">
+        ${single ? `<div class="ma-team"><div class="rr-h">Singles</div>${slot(0, "Player A")}${slot(1, "Player B")}</div>`
+          : `<div class="ma-team"><div class="rr-h">Team A</div>${slot(0, "Player 1")}${slot(1, "Player 2")}</div>
+        <div class="ma-team"><div class="rr-h">Team B</div>${slot(2, "Player 1")}${slot(3, "Player 2")}</div>`}
+        <p class="err" id="maErr" hidden></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="maGo">Put on court ${num}</button></div>
+      </form>`, (close) => {
+      const pick = () => Array.from({ length: n }, (_, i) => $("ma" + i).value);
+      const check = () => {
+        const v = pick(), err = $("maErr");
+        const bad = v.some(x => !x) ? "Choose a player for every spot." : new Set(v).size < n ? "Each player can only be picked once." : "";
+        err.textContent = bad; err.hidden = !bad; $("maGo").disabled = !!bad;
+        return !bad;
+      };
+      $("maForm").addEventListener("change", check); check();
+      $("maForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!check()) return;
+        const v = pick();
+        close();
+        let gone = false, busy = false;
+        const ok = await mutate((s, now) => {
+          if (!s.session || isTour(s)) return false;
+          const c = s.session.courts.find(c => c.num === num);
+          if (!c || c.teamA) { busy = true; return false; }
+          if (v.some(id => !s.players[id] || !(s.players[id].status in RANK) || s.players[id].sitOut)) { gone = true; return false; }
+          if (single) { c.teamA = [v[0]]; c.teamB = [v[1]]; } else { c.teamA = [v[0], v[1]]; c.teamB = [v[2], v[3]]; }
+          c.startedAt = now + WALK_ON_MS; c.allocAt = now;
+          rememberQueue(s, c, v);
+          v.forEach(id => { s.players[id].status = "playing"; s.players[id].court = num; });
+        });
+        if (busy) toast(`Court ${num} is already in use.`);
+        else if (gone) toast("One of those players is no longer waiting or is sitting out. Try again.");
+        else if (ok) toast(`Court ${num} allocated for ${single ? "singles" : "doubles"}`);
+      });
+    });
+  }
+
+  async function undoLast() {
+    let label = "";
+    const ok = await mutate((s, now) => {
+      const la = s.lastAction;
+      if (la && la.mlen != null) s.matches = (s.matches || []).slice(0, la.mlen);
+      if (!la || !la.prev) return false;
+      label = `Court ${la.court}`;
+      const cur = s.players || {};
+      s.session = la.prev.session;
+      s.players = la.prev.players || {};
+      // Keep anyone who joined after the result was entered.
+      for (const [id, p] of Object.entries(cur)) {
+        if (!(id in s.players)) { const q = { ...p, status: "new" }; delete q.court; s.players[id] = q; }
+      }
+      delete s.lastAction;
+    });
+    if (ok) toast(`${label} result undone`);
+  }
+
+  async function allocateRound() {
+    let label = "", blocked = false;
+    const ok = await mutate((s, now) => {
+      if (!isRR(s)) return false;
+      if (!allocateRoundIn(s, now)) { blocked = true; return false; }
+      label = `Round ${s.session.rr.current + 1}`;
+    });
+    if (blocked) toast("Finish every match in this round first.");
+    else if (ok) toast(`${label} is on court`);
+  }
+
+  function udRecord(s, c, winner, sa, sb, endAt) {
+    const ud = s.session.ud, scored = Number.isFinite(sa) && Number.isFinite(sb), aWon = winner === "A";
+    const upd = (ids, won, pf, pa) => ids.forEach(id => {
+      const p = s.players[id]; if (!p) return;
+      p.games = (p.games || 0) + 1; if (won) p.wins = (p.wins || 0) + 1; p.hist = [...(p.hist || []), won ? "W" : "L"].slice(-20);
+      if (scored) { p.pf = (p.pf || 0) + pf; p.pa = (p.pa || 0) + pa; }
+      if (won && c.num === 1) p.top = (p.top || 0) + 1;
+    });
+    upd(c.teamA, aWon, sa, sb); upd(c.teamB, !aWon, sb, sa);
+    c.done = { winner, ...(scored ? { scoreA: sa, scoreB: sb } : {}) };
+    logOccupancy(s, c, endAt);
+    c.lastMatchMs = ud.startAt ? Math.max(0, endAt - ud.startAt) : null;
+  }
+  function udFinishIfDone(s) {
+    if (!s.session.courts.filter(x => x.teamA).every(x => x.done)) return false;
+    s.session.ud.completed = (s.session.ud.completed || 0) + 1;
+    udNext(s);
+    return true;
+  }
+
+  // Timed rounds: one End round button collects every court's score at once.
+  function endRoundUD() {
+    const s = state;
+    if (!isUD(s) || s.session.ud.state !== "playing") return;
+    const courts = s.session.courts.filter(c => c.teamA && !c.done).sort((a, b) => a.num - b.num);
+    if (!courts.length) return;
+    const endAt = Date.now(), title = udRoundOf(s);
+    modal(`
+      <h3>End ${esc(title)}</h3>
+      <p>Enter the score for every court. The higher score wins.</p>
+      <form id="erForm" style="display:flex;flex-direction:column;gap:12px">
+        ${courts.map(c => `<div class="er-court"><div class="rr-h">Court ${c.num}</div>
+          <div class="score-row">
+            <label>${names(c.teamA)}<input type="number" id="erA${c.num}" min="0" max="99" inputmode="numeric"></label>
+            <label>${names(c.teamB)}<input type="number" id="erB${c.num}" min="0" max="99" inputmode="numeric"></label>
+          </div><p class="note" id="erW${c.num}">Enter both scores.</p></div>`).join("")}
+        <p class="err" id="erErr" hidden></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="erGo" disabled>Save all results</button></div>
+      </form>`, (close) => {
+      const read = (c) => { const a = parseInt($("erA" + c.num).value, 10), b = parseInt($("erB" + c.num).value, 10); return { a, b, ok: Number.isFinite(a) && Number.isFinite(b) && a !== b }; };
+      const check = () => {
+        let all = true;
+        courts.forEach(c => {
+          const { a, b, ok } = read(c), el = $("erW" + c.num);
+          all = all && ok;
+          el.innerHTML = !Number.isFinite(a) || !Number.isFinite(b) ? "Enter both scores."
+            : a === b ? '<span style="color:var(--danger)">Scores are level. Play a deciding point.</span>'
+            : `Winner: <strong>${names(a > b ? c.teamA : c.teamB)}</strong>`;
+        });
+        $("erGo").disabled = !all;
+        return all;
+      };
+      $("erForm").addEventListener("input", check); check();
+      $("erForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!check()) return;
+        const results = courts.map(c => { const { a, b } = read(c); return { num: c.num, w: a > b ? "A" : "B", a, b }; });
+        close();
+        let label = "";
+        const ok = await mutate((s2, now) => {
+          if (!isUD(s2) || s2.session.ud.state !== "playing") return false;
+          const prev = JSON.parse(JSON.stringify({ session: s2.session, players: s2.players }));
+          label = udRoundOf(s2);
+          s2.lastAction = { batch: true, label, winners: [], at: now, prev, mlen: (s2.matches || []).length };
+          for (const r of results) {
+            const c = s2.session.courts.find(x => x.num === r.num);
+            if (c && c.teamA && !c.done) { logMatch(s2, c, r.w, r.a, r.b, s2.session.ud.startAt ? endAt - s2.session.ud.startAt : null); udRecord(s2, c, r.w, r.a, r.b, endAt); }
+          }
+          if (udFinishIfDone(s2)) s2.lastAction.roundEnded = true;
+        });
+        if (ok) toast(`${label} results saved`);
+      });
+    });
+  }
+
+  let udMinSaving = Promise.resolve();
+  function setUDTime(total) {
+    udMinSaving = udMinSaving.then(async () => {
+      let mins = 0;
+      const ok = await mutate((s) => {
+        if (!isUD(s) || s.session.ud.state !== "ready" || !s.session.ud.timed) return false;
+        const ud = s.session.ud, t = Math.max(10, Math.min(90 * 60, Math.round(total)));
+        if (t === udSecs(ud)) return false;
+        ud.seconds = t; delete ud.minutes; mins = t;
+      });
+      if (ok && mins !== settings.udSeconds) { try { await settingsRef.set({ ...settings, udSeconds: mins }); } catch {} }
+      if (!ok) render();
+    });
+  }
+
+  async function startUDRound() {
+    let label = "";
+    const ok = await mutate((s, now) => {
+      if (!isUD(s) || s.session.ud.state !== "ready") return false;
+      const ud = s.session.ud;
+      ud.state = "playing";
+      ud.startAt = now + (ud.timed ? 10000 : 0);
+      ud.endAt = ud.timed ? ud.startAt + udSecs(ud) * 1000 : null;
+      s.session.courts.forEach(c => { if (c.teamA) { c.startedAt = ud.startAt; c.allocAt = now; } });
+      label = udRoundOf(s);
+      delete s.lastAction;
+    });
+    if (ok) toast(`${label} started`);
+  }
+  async function startUpDown(n, timed, seconds) {
+    const ids = waiting(state);
+    if (ids.length < 4) return toast("Up and down needs at least 4 players in the queue.");
+    let changed = false;
+    const ok = await mutate((s, now) => {
+      if (waiting(s).join() !== ids.join() || Object.keys(s.players).length !== ids.length) { changed = true; return false; }
+      delete s.lastAction; delete s.lastSummary; s.matches = [];
+      s.session = { mode: "ud", startedAt: now, courts: emptyCourts(n) };
+      Object.values(s.players).forEach(p => { delete p.sitOut; delete p.court; p.status = "ud"; p.games = 0; p.wins = 0; p.pf = 0; p.pa = 0; p.top = 0; });
+      udInitial(s, ids, timed, seconds);
+    });
+    if (changed) toast("Someone joined or left while the courts were being set. Start again.");
+    else if (ok) toast("Up and down started. Press Start round 1 when everyone is on court.");
+  }
+
+  const emptyCourts = (n) => Array.from({ length: n }, (_, i) => ({ num: i + 1, teamA: null, teamB: null, startedAt: null }));
+  function startSession() {
+    requirePin("Enter the admin PIN to start a new session.", () => {
+      const def = settings.courtCount || 4;
+      const count = Object.keys(state.players).length;
+      modal(`
+        <h3>Start session</h3>
+        <form id="startForm" style="display:flex;flex-direction:column;gap:12px">
+          <fieldset class="modes"><legend>Session type</legend>
+            <label class="mode"><input type="radio" name="mode" value="std" checked><span><b>Court allocation mode</b>Players queue and rotate on as courts free up. People can join all night.</span></label>
+            <label class="mode"><input type="radio" name="mode" value="rr"><span><b>Round robin tournament</b>Everyone plays against everyone at least once, with partners rotating. Entries close when it starts.</span></label>
+            <label class="mode"><input type="radio" name="mode" value="ud"><span><b>Court up down tournament</b>Rounds start and end together. Winners move toward court 1, losers move away, and partners are mixed every round. Entries close when it starts.</span></label>
+          </fieldset>
+          <fieldset class="modes" id="udOpts" hidden><legend>Round timing</legend>
+            <div class="row" style="flex:none">
+              <label class="mode"><input type="radio" name="timing" value="untimed" checked><span><b>Untimed</b>Each round ends when every court has a result.</span></label>
+              <label class="mode"><input type="radio" name="timing" value="timed"><span><b>Timed</b>Every round runs for a set time after a 10 second setup.</span></label>
+            </div>
+            <div id="udMinWrap" class="time-pick" hidden><span class="tp-lbl">Time per round</span>
+              <label>Minutes<input type="number" id="udMinutes" min="0" max="90" inputmode="numeric" value="${Math.floor((settings.udSeconds || (settings.udMinutes || 12) * 60) / 60)}"></label>
+              <label>Seconds<input type="number" id="udSeconds" min="0" max="59" step="5" inputmode="numeric" value="${(settings.udSeconds || 0) % 60}"></label>
+            </div>
+          </fieldset>
+          <label>Courts available<input type="number" id="courtCount" min="1" max="12" value="${def}"></label>
+          <p class="note" id="modeNote"></p>
+          <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="startGo">Start session</button></div>
+        </form>`, (close) => {
+        const form = $("startForm");
+        const note = () => {
+          const rr = form.mode.value === "rr", ud = form.mode.value === "ud";
+          const courts = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
+          $("udOpts").hidden = !ud;
+          $("udMinWrap").hidden = !(ud && form.timing.value === "timed");
+          if (ud) {
+            $("startGo").textContent = "Start tournament";
+            const qn = waiting(state).length;
+            if (qn < 4 || qn !== count) {
+              $("modeNote").textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} in the queue. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
+              $("startGo").disabled = true; return;
+            }
+            const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4;
+            const cy = udCycle(qn, used * 4);
+            const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each), so plan for ${cy.rounds}, ${cy.rounds * 2} or ${cy.rounds * 3} rounds.` : " Everyone plays every round.";
+            $("modeNote").textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in queue order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}`;
+            $("startGo").disabled = false; return;
+          }
+          if (!rr) { $("modeNote").textContent = "Courts start empty. Fill each one with Allocate now or Manual allocation when you're ready."; $("startGo").disabled = false; $("startGo").textContent = "Start session"; return; }
+          $("startGo").textContent = "Start tournament";
+          if (count < 4) {
+            $("modeNote").textContent = `${count} ${count === 1 ? "player is" : "players are"} in the queue. A tournament needs at least 4, so add everyone first.`;
+            $("startGo").disabled = true; return;
+          }
+          const used = Math.min(courts, Math.floor(count / 4));
+          const sits = count > used * 4 ? ` ${count - used * 4} sit out each round, taking turns.` : "";
+          $("modeNote").textContent = `${count} players in the queue. Check everyone is in: nobody can be added once it starts. Each round uses ${used} ${used === 1 ? "court" : "courts"}.${sits}`;
+          $("startGo").disabled = false;
+        };
+        form.addEventListener("change", note); $("courtCount").addEventListener("input", note); note();
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const mode = form.mode.value;
+          const n = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
+          const timed = form.timing.value === "timed";
+          const seconds = Math.max(10, Math.min(90 * 60, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0))) || 720;
+          close();
+          const patch = {};
+          if (n !== settings.courtCount) patch.courtCount = n;
+          if (mode === "ud" && timed && seconds !== settings.udSeconds) patch.udSeconds = seconds;
+          if (Object.keys(patch).length) { try { await settingsRef.set({ ...settings, ...patch }); } catch {} }
+          if (mode === "rr") startRoundRobin(n);
+          else if (mode === "ud") startUpDown(n, timed, seconds);
+          else startStandard(n);
+        });
+      });
+    });
+  }
+  async function startStandard(n) {
+    const ok = await mutate((s, now) => {
+      delete s.lastAction; delete s.lastSummary; s.matches = [];
+      s.session = { mode: "std", startedAt: now, courts: emptyCourts(n) };
+      Object.values(s.players).forEach((p, i) => { p.status = "new"; p.since = p.since || now + i; delete p.court; });
+    });
+    if (ok) toast("Session started. Allocate courts when you're ready.");
+  }
+  async function startRoundRobin(n) {
+    const ids = Object.keys(state.players).sort();
+    if (ids.length < 4) return toast("A tournament needs at least 4 players.");
+    toast("Building the draw…");
+    await sleep(40);
+    const rounds = makeSchedule(ids, n);
+    let changed = false;
+    const ok = await mutate((s, now) => {
+      if (Object.keys(s.players).sort().join() !== ids.join()) { changed = true; return false; }
+      delete s.lastAction; delete s.lastSummary; s.matches = [];
+      s.session = { mode: "rr", startedAt: now, courts: emptyCourts(n), rr: { current: -1, rounds: rounds.map(r => ({
+        status: "pending", byes: r.byes,
+        matches: r.matches.map(m => ({ teamA: m.teamA, teamB: m.teamB, status: "pending" })) })) } };
+      Object.values(s.players).forEach(p => { delete p.sitOut; p.status = "rr"; p.games = 0; p.wins = 0; p.pf = 0; p.pa = 0; delete p.court; delete p.since; });
+      allocateRoundIn(s, now);
+    });
+    if (changed) toast("Someone joined or left while the draw was being made. Start the tournament again.");
+    else if (ok) toast(`Tournament started: ${rounds.length} rounds, round 1 is on court`);
+  }
+
+  function endSession() {
+    requirePin("Enter the admin PIN to end the session.", () => {
+      modal(`
+        <h3>End session</h3>
+        <p>This clears every court and the whole queue for the night. Everyone's win and loss record is saved as tonight's results. Games still on court aren't counted.</p>
+        <div class="row"><button type="button" data-close>Keep playing</button><button type="button" class="btn-danger" id="endGo">End session</button></div>`, (close) => {
+        $("endGo").addEventListener("click", async () => {
+          close();
+          const ok = await mutate((s, now) => {
+            if (s.session) {
+              const rr = isRR(s), ud = isUD(s);
+              const rows = Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, ...(ud ? { top: p.top || 0 } : {}) }));
+              s.lastSummary = { mode: rr ? "rr" : ud ? "ud" : "std", startedAt: s.session.startedAt, endedAt: now, courts: s.session.courts.length, rows };
+              if (ud) Object.assign(s.lastSummary, { roundsDone: s.session.ud.completed || 0, scored: rows.some(r => r.pf || r.pa) });
+              if (rr) {
+                const R = s.session.rr.rounds;
+                Object.assign(s.lastSummary, { roundsDone: R.filter(r => r.status === "done").length, roundsTotal: R.length, scored: rows.some(r => r.pf || r.pa) });
+              }
+            }
+            s.session = null; s.players = {}; delete s.lastAction;
+          });
+          if (ok) toast("Session ended. Results are on the board.");
+        });
+      });
+    });
+  }
+
+  async function toggleSitOut(id) {
+    let name = "", now = false;
+    const ok = await mutate((s) => {
+      const p = s.players[id];
+      if (!p || !(p.status in RANK)) return false;
+      if (p.sitOut) delete p.sitOut; else p.sitOut = true;
+      name = p.name; now = !!p.sitOut;
+    });
+    if (ok) toast(now ? `${name} is sitting out and keeps their place` : `${name} is back in the queue`);
+    else render();
+  }
+
+  async function setResultsHidden(hidden) {
+    await mutate((s) => { if (!s.lastSummary) return false; if (hidden) s.lastSummary.hidden = true; else delete s.lastSummary.hidden; });
+  }
+
+  async function setStatus(id, status) {
+    if (!(status in RANK)) return;
+    let name = "";
+    const ok = await mutate((s) => {
+      const p = s.players[id];
+      if (!p || !(p.status in RANK) || p.status === status) return false;
+      p.status = status; name = p.name;
+    });
+    if (ok) toast(`${name} is now ${{ new: "New", winner: "a Winner", grinner: "a Grinner" }[status]}`);
+    else render();
+  }
+
+  function removePlayer(id) {
+    if (isTour(state)) return toast("Players can't be removed during a tournament.");
+    requirePin("Enter the admin PIN to remove a player.", async () => {
+      await mutate((s) => { const p = s.players[id]; if (!p || p.status === "playing") return false; delete s.players[id]; delete s.lastAction; });
+    });
+  }
+
+  function changePin() {
+    modal(`
+      <h3>Change PIN</h3>
+      <p>The new PIN works on every device straight away.</p>
+      <form id="cpForm" style="display:flex;flex-direction:column;gap:10px">
+        <label>New PIN<input type="password" id="np1" inputmode="numeric" maxlength="12" autocomplete="off"></label>
+        <label>Repeat new PIN<input type="password" id="np2" inputmode="numeric" maxlength="12" autocomplete="off"></label>
+        <p class="err" id="cpErr" hidden></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">Save PIN</button></div>
+      </form>`, (close) => {
+      $("cpForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const a = $("np1").value.trim(), err = $("cpErr");
+        if (a.length < 4) { err.textContent = "Use at least 4 digits."; err.hidden = false; return; }
+        if (a !== $("np2").value.trim()) { err.textContent = "The two PINs don't match."; err.hidden = false; return; }
+        try { await settingsRef.set({ ...settings, pinHash: await hashPin(a) }); } catch (e2) { fail(e2); return; }
+        close(); toast("PIN changed");
+      });
+    });
+  }
+
+  // TESTING ONLY: remove this function and its Admin button before real use.
+  const FIRST = ["Ava","Ben","Chloe","Dan","Ella","Finn","Grace","Harry","Isla","Jack","Kate","Liam","Mia","Noah","Olive","Paul","Quinn","Ruby","Sam","Tara","Uma","Vince","Will","Zoe","Leo","Nina","Oscar","Priya","Raj","Sofia","Tom","Wendy"];
+  function testPlayers() {
+    if (isTour(state)) return toast("Entries are closed while the tournament is running.");
+    modal(`
+      <h3>Add test players</h3>
+      <p>For testing only. Adds random names to the end of the queue as new players.</p>
+      <form id="tpForm" style="display:flex;flex-direction:column;gap:10px">
+        <label>How many<input type="number" id="tpCount" min="1" max="40" value="12"></label>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">Add players</button></div>
+      </form>`, (close) => {
+      $("tpForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const n = Math.max(1, Math.min(40, parseInt($("tpCount").value, 10) || 0));
+        close();
+        let added = 0;
+        const ok = await mutate((s, now) => {
+          const taken = new Set(Object.values(s.players).map(p => p.name.toLowerCase()));
+          for (let i = 0, tries = 0; i < n && tries < 2000; tries++) {
+            const name = FIRST[Math.floor(Math.random() * FIRST.length)] + " " + String.fromCharCode(65 + Math.floor(Math.random() * 26)) + ".";
+            if (taken.has(name.toLowerCase())) continue;
+            taken.add(name.toLowerCase());
+            const id = "p" + (now + i).toString(36) + Math.random().toString(36).slice(2, 6);
+            s.players[id] = { name, status: "new", since: now + i, games: 0, wins: 0, test: true };
+            i++; added++;
+          }
+        });
+        if (ok) toast(`Added ${added} test players`);
+      });
+    });
+  }
+
+  function fullReset() {
+    requirePin("Enter the admin PIN to reset the board.", () => {
+      modal(`
+        <h3>Full reset</h3>
+        <p>This puts the board back to how it was on day one: no session, an empty queue, no saved results, the court count back to 4, and no admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
+        <form id="rsForm" style="display:flex;flex-direction:column;gap:10px">
+          <label>Type RESET to confirm<input type="text" id="rsWord" autocomplete="off" autocapitalize="characters"></label>
+          <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-danger" id="rsGo" disabled>Reset everything</button></div>
+        </form>`, (close) => {
+        $("rsWord").addEventListener("input", () => { $("rsGo").disabled = $("rsWord").value.trim().toUpperCase() !== "RESET"; });
+        $("rsForm").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if ($("rsWord").value.trim().toUpperCase() !== "RESET") return;
+          close();
+          const ok = await mutate((s) => {
+            for (const k of Object.keys(s)) delete s[k];
+            s.session = null; s.players = {};
+          });
+          if (!ok) return;
+          try { await settingsRef.set({}); } catch (e2) { fail(e2); return; }
+          settings = {}; layoutDoc = null; adminUntil = 0; freeingCourt = null;
+          render(); toast("Board reset");
+        });
+      });
+    });
+  }
+
+  function adminMenu() {
+    requirePin("Enter the admin PIN to open admin tools.", () => {
+      const live = !!state.session;
+      modal(`
+        <h3>Admin</h3>
+        <p>Unlocked on this device for 30 minutes. In the queue you can now drag players up or down, change anyone's status and remove players.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${live ? `<button type="button" id="aEnd" class="btn-danger">End session</button>` : `<button type="button" id="aStart" class="btn-sun">Start new session</button>`}
+          <button type="button" id="aArr">Arrange courts</button>
+          <button type="button" id="aTest">Add test players</button>
+          ${window.__localEdition ? `<button type="button" id="aBackup">Download backup</button><button type="button" id="aRestore">Restore backup</button><input type="file" id="aRestoreFile" accept=".json,application/json" hidden>` : ""}
+          <button type="button" id="aPin">Change PIN</button>
+          <button type="button" id="aLock">Lock admin</button>
+          <button type="button" id="aReset" class="btn-danger">Full reset</button>
+          <button type="button" data-close>Close</button>
+        </div>`, (close) => {
+        $("aStart") && $("aStart").addEventListener("click", () => { close(); startSession(); });
+        $("aEnd") && $("aEnd").addEventListener("click", () => { close(); endSession(); });
+        $("aLock").addEventListener("click", () => { adminUntil = 0; close(); render(); toast("Admin locked"); });
+        $("aPin").addEventListener("click", () => { close(); changePin(); });
+        if (window.__localEdition) {
+          $("aBackup").addEventListener("click", () => { window.__localEdition.backup(); toast("Backup downloaded"); });
+          $("aRestore").addEventListener("click", () => $("aRestoreFile").click());
+          $("aRestoreFile").addEventListener("change", async (e) => {
+            const f = e.target.files && e.target.files[0]; if (!f) return;
+            try { window.__localEdition.restore(await f.text()); } catch { toast("That file isn't a SWS Court Manager backup."); }
+          });
+        }
+        $("aTest").addEventListener("click", () => { close(); testPlayers(); });
+        $("aArr").addEventListener("click", () => { close(); arranging = true; selCourt = null; render(); });
+        $("aReset").addEventListener("click", () => { close(); fullReset(); });
+      });
+    });
+  }
+
+  // ---------- render ----------
+  const ago = (t) => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 1 ? "just started" : `${m} min`; };
+  function chip(id) { const p = state.players[id]; return `<span class="chip">${esc(p ? p.name : "?")}</span>`; }
+  function names(ids) { return ids.map(id => esc(state.players[id]?.name || "?")).join(" & "); }
+
+  // ---------- court layout ----------
+  let arranging = false, selCourt = null, drag = null, layoutDoc = null, layoutRef = null;
+  const mqWide = window.matchMedia("(min-width:700px)");
+  try { mqWide.addEventListener("change", () => render()); } catch {}
+  const courtTotal = () => state.session ? state.session.courts.length : (settings.courtCount || 4);
+  function layoutFor(n, raw) {
+    const L = raw || layoutDoc;
+    if (!L || !L.cols) return null;
+    const cols = Math.max(1, Math.min(8, L.cols | 0));
+    let rows = Math.max(1, Math.min(12, (L.rows | 0) || 1));
+    while (rows * cols < n) rows++;
+    const pos = {}, used = new Set();
+    for (let num = 1; num <= n; num++) {
+      const p = L.pos && L.pos[num];
+      if (Array.isArray(p) && p[0] >= 0 && p[1] >= 0 && p[0] < rows && p[1] < cols && !used.has(p[0] + ":" + p[1])) { pos[num] = [p[0], p[1]]; used.add(p[0] + ":" + p[1]); }
+    }
+    for (let num = 1; num <= n; num++) {
+      if (pos[num]) continue;
+      for (let i = 0; i < rows * cols; i++) { const r = Math.floor(i / cols), c = i % cols; if (!used.has(r + ":" + c)) { pos[num] = [r, c]; used.add(r + ":" + c); break; } }
+    }
+    return { cols, rows, pos };
+  }
+  const cellKey = (L, num) => L.pos[num][0] * 100 + L.pos[num][1];
+  function currentLayout() {
+    const n = courtTotal(), c = Math.min(n, 3);
+    return layoutFor(n) || layoutFor(n, { cols: c, rows: Math.ceil(n / c), pos: {} });
+  }
+  // The layout is saved in the main board record, so it arrives with the courts on every load.
+  let layoutSaving = Promise.resolve();
+  function saveLayout(L) {
+    layoutDoc = L ? JSON.parse(JSON.stringify(L)) : null;
+    render();
+    const body = layoutDoc;
+    layoutSaving = layoutSaving.then(() => mutate((s) => { if (body) s.layout = body; else delete s.layout; }))
+      .then(ok => { if (ok === false) toast("The court layout didn't save. Try the move again."); });
+  }
+  function moveCourt(num, r, c) {
+    const L = currentLayout();
+    const occ = Object.keys(L.pos).find(k => L.pos[k][0] === r && L.pos[k][1] === c);
+    selCourt = null;
+    if (occ && +occ === num) return render();
+    if (occ) L.pos[occ] = L.pos[num];
+    L.pos[num] = [r, c];
+    saveLayout(L);
+  }
+  function resizeLayout(dc, dr) {
+    const L = currentLayout(), n = courtTotal();
+    const cols = Math.max(1, Math.min(8, L.cols + dc)), rows = Math.max(1, Math.min(12, L.rows + dr));
+    if (cols === L.cols && rows === L.rows) return;
+    if (rows * cols < n) return toast(`${n} courts need at least ${n} spaces.`);
+    saveLayout({ cols, rows, pos: L.pos });
+  }
+  function renderArrange(box) {
+    const L = currentLayout();
+    box.style.gridTemplateColumns = `repeat(${L.cols}, minmax(0,1fr))`;
+    box.classList.add("laid");
+    $("arrCols").textContent = L.cols; $("arrRows").textContent = L.rows;
+    const at = {}; for (const [num, p] of Object.entries(L.pos)) at[p[0] + ":" + p[1]] = num;
+    let html = "";
+    for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
+      const num = at[r + ":" + c];
+      html += `<div class="cell" data-r="${r}" data-c="${c}" style="grid-row:${r + 1};grid-column:${c + 1}">${num ? `<div class="tile${selCourt === +num ? " sel" : ""}" data-court="${num}" tabindex="0" role="button" aria-label="Court ${num}. Drag or tap to move">Court ${num}</div>` : `<span class="cell-hint">Empty</span>`}</div>`;
+    }
+    box.innerHTML = html;
+    box.querySelectorAll(".cell").forEach(cell => cell.addEventListener("click", (e) => {
+      if (e.target.closest(".tile") || selCourt === null) return;
+      moveCourt(selCourt, +cell.dataset.r, +cell.dataset.c);
+    }));
+    box.querySelectorAll(".tile").forEach(t => {
+      t.addEventListener("pointerdown", (e) => {
+        if (e.button > 0) return;
+        drag = { num: +t.dataset.court, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, el: t };
+        try { t.setPointerCapture(e.pointerId); } catch {}
+      });
+      t.addEventListener("pointermove", (e) => {
+        if (!drag || drag.el !== t) return;
+        if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 6) {
+          drag.moved = true;
+          const r = t.getBoundingClientRect(), g = t.cloneNode(true);
+          g.classList.add("ghost"); g.style.width = r.width + "px"; g.style.height = r.height + "px";
+          drag.dx = drag.x0 - r.left; drag.dy = drag.y0 - r.top;
+          document.body.appendChild(g); drag.ghost = g; t.classList.add("lifting");
+        }
+        if (drag.moved) {
+          drag.ghost.style.left = (e.clientX - drag.dx) + "px"; drag.ghost.style.top = (e.clientY - drag.dy) + "px";
+          box.querySelectorAll(".cell.target").forEach(x => x.classList.remove("target"));
+          const over = document.elementFromPoint(e.clientX, e.clientY)?.closest(".cell");
+          over && over.classList.add("target");
+        }
+      });
+      const finish = (e, cancelled) => {
+        if (!drag || drag.el !== t) return;
+        const d = drag; drag = null;
+        if (d.ghost) d.ghost.remove();
+        t.classList.remove("lifting");
+        if (cancelled) return render();
+        if (d.moved) {
+          const over = document.elementFromPoint(e.clientX, e.clientY)?.closest(".cell");
+          if (over) moveCourt(d.num, +over.dataset.r, +over.dataset.c); else render();
+        } else if (selCourt !== null && selCourt !== d.num) {
+          const p = currentLayout().pos[d.num]; moveCourt(selCourt, p[0], p[1]);
+        } else { selCourt = selCourt === d.num ? null : d.num; render(); }
+      };
+      t.addEventListener("pointerup", (e) => finish(e, false));
+      t.addEventListener("pointercancel", (e) => finish(e, true));
+      t.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selCourt = selCourt === +t.dataset.court ? null : +t.dataset.court; render(); } });
+    });
+  }
+
+  function rankRows(sum) {
+    if (sum.mode === "rr" || sum.mode === "ud") {
+      const d = (r) => (r.pf || 0) - (r.pa || 0);
+      const sc = (r) => r.wins + (r.draws || 0) / 2;
+      return sum.rows.slice().sort((a, b) => sc(b) - sc(a) || d(b) - d(a) || (b.pf || 0) - (a.pf || 0) || a.name.localeCompare(b.name));
+    }
+    return sum.rows.slice().sort((a, b) => b.wins - a.wins || (b.games ? b.wins / b.games : -1) - (a.games ? a.wins / a.games : -1) || b.games - a.games || a.name.localeCompare(b.name));
+  }
+  const lostOf = (r) => r.games - r.wins - (r.draws || 0);
+  const diffTxt = (r) => { const d = (r.pf || 0) - (r.pa || 0); return d > 0 ? "+" + d : d < 0 ? "−" + Math.abs(d) : "0"; };
+  const pct = (r) => r.games ? Math.round(100 * r.wins / r.games) + "%" : "–";
+  function sumDate(sum) {
+    const d = new Date(sum.startedAt);
+    return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+  }
+  function resultsHtml(sum) {
+    if (!sum || !sum.rows) return "";
+    const rows = rankRows(sum);
+    const totalGames = Math.round(rows.reduce((a, r) => a + r.games, 0) / 4);
+    const mins = Math.round((sum.endedAt - sum.startedAt) / 60000);
+    const dur = mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+    const ud = sum.mode === "ud", rr = sum.mode === "rr" || ud, pts = rr && sum.scored, dr = rr && rows.some(r => r.draws), top = false;
+    const extra = ud ? ` · ${sum.roundsDone} ${sum.roundsDone === 1 ? "round" : "rounds"}` : rr ? ` · ${sum.roundsDone} of ${sum.roundsTotal} rounds` : "";
+    return `<div class="court-card results" style="grid-column:1/-1">
+      <div class="court-top"><div><div class="court-num">${ud ? "Up and down leaderboard" : rr ? "Tournament leaderboard" : "Session results"}</div>
+        <div class="court-time">${esc(sumDate(sum))} · ${rows.length} players · ${totalGames} games${extra} · ${sum.courts} courts · ${dur}</div></div>
+        <div class="row" style="flex:none"><button id="copyRes">Copy results</button></div></div>
+      <div class="tbl-wrap"><table class="res">
+        <thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${pts ? "<th>Points</th><th>+/−</th>" : ""}${top ? "<th>Court 1 wins</th>" : ""}<th>Win %</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws || 0}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf || 0}–${r.pa || 0}</td><td>${diffTxt(r)}</td>` : ""}${top ? `<td>${r.top || 0}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>
+      </table></div>
+      ${rr ? `<p class="note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${pts ? ", then points difference, then points scored" : ""}.</p>` : ""}
+      <textarea id="copyFallback" readonly hidden></textarea>
+    </div>`;
+  }
+  async function copyResults(sum) {
+    const rows = rankRows(sum);
+    const rr = sum.mode === "rr" || sum.mode === "ud", pts = rr && sum.scored;
+    const text = [`Southwest Suns ${sum.mode === "ud" ? "up and down" : sum.mode === "rr" ? "round robin" : "results"}, ${sumDate(sum)}`, ""]
+      .concat(rows.map((r, i) => `${i + 1}. ${r.name}: ${r.wins}W ${r.draws ? r.draws + "D " : ""}${lostOf(r)}L ${pts ? `(${diffTxt(r)})` : `(${pct(r)})`}`)).join("\n");
+    try { await navigator.clipboard.writeText(text); toast("Results copied"); }
+    catch {
+      const ta = $("copyFallback"); ta.hidden = false; ta.value = text; ta.focus(); ta.select();
+      toast("Select all and copy the text below");
+    }
+  }
+
+  function rrPanelHtml(s) {
+    const R = s.session.rr.rounds;
+    let idx = R.findIndex(r => r.status === "playing");
+    if (idx < 0) idx = R.findIndex(r => r.status !== "done");
+    const nm = (id) => esc(s.players[id]?.name || "?");
+    const team = (ids, win) => `<span class="${win ? "won" : ""}">${ids.map(nm).join(" & ")}</span>`;
+    let html = "";
+    if (idx >= 0) {
+      const r = R[idx];
+      html += `<div class="rr-block"><div class="rr-h">Round ${idx + 1} of ${R.length}${r.status === "playing" ? " · on court" : " · up next"}</div><ul class="rr-list">`;
+      html += r.matches.map(m => {
+        const res = m.status === "done" ? `<span class="rr-res">${m.scoreA != null ? `${m.scoreA}–${m.scoreB}` : m.winner === "D" ? "Draw" : "Done"}</span>` : m.status === "playing" ? `<span class="rr-res live">Court ${m.court}</span>` : "";
+        return `<li><div class="rr-teams">${team(m.teamA, m.winner === "A")}<span class="vs">vs</span>${team(m.teamB, m.winner === "B")}</div>${res}</li>`;
+      }).join("");
+      html += `</ul>${r.byes.length ? `<div class="note">Sitting out: ${r.byes.map(nm).join(", ")}</div>` : ""}</div>`;
+    }
+    const rows = rankRows({ mode: "rr", rows: Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0 })) });
+    const pts = rows.some(r => r.pf || r.pa), dr = rows.some(r => r.draws);
+    html += `<div class="rr-block"><div class="rr-h">Standings</div><div class="tbl-wrap"><table class="res small">
+      <thead><tr><th>#</th><th>Player</th><th>P</th><th>W</th>${dr ? "<th>D</th>" : ""}<th>L</th>${pts ? "<th>+/−</th>" : ""}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${diffTxt(r)}</td>` : ""}</tr>`).join("")}</tbody>
+    </table></div></div>`;
+    return html;
+  }
+
+  // ---------- queue reordering (admin) ----------
+  let qdrag = null, qFocus = null;
+  // "Timer only" view is a per-device choice, so it lives in this browser only.
+  let timerOnly = false;
+  try { timerOnly = localStorage.getItem("suns-timer-only") === "1"; } catch {}
+  function setTimerOnly(on) {
+    timerOnly = on;
+    try { localStorage.setItem("suns-timer-only", on ? "1" : "0"); } catch {}
+    try {
+      if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    } catch {}
+    render();
+    window.scrollTo(0, 0);
+  }
+  async function moveInQueue(id, toIndex) {
+    let moved = false;
+    const ok = await mutate((s) => {
+      const q = waiting(s), from = q.indexOf(id);
+      if (from < 0) return false;
+      const to = Math.max(0, Math.min(q.length - 1, toIndex));
+      if (to === from) return false;
+      q.splice(from, 1); q.splice(to, 0, id);
+      const P = s.players, prev = q[to - 1], next = q[to + 1];
+      P[id].since = prev && next ? (P[prev].since + P[next].since) / 2 : prev ? P[prev].since + 1 : P[next].since - 1;
+      moved = true;
+    });
+    if (!ok || !moved) render();
+  }
+  function bindQueueDrag(q) {
+    const list = $("queue");
+    const clearMarks = () => list.querySelectorAll(".drop-above,.drop-below").forEach(x => x.classList.remove("drop-above", "drop-below"));
+    const targetAt = (x, y) => {
+      const li = document.elementFromPoint(x, y)?.closest("#queue li[data-id]");
+      if (!li) return null;
+      const r = li.getBoundingClientRect();
+      return { li, below: y > r.top + r.height / 2 };
+    };
+    list.querySelectorAll("[data-drag]").forEach(g => {
+      const id = g.dataset.drag, li = g.closest("li");
+      g.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault(); qFocus = id;
+        moveInQueue(id, q.indexOf(id) + (e.key === "ArrowUp" ? -1 : 1));
+      });
+      g.addEventListener("pointerdown", (e) => {
+        if (e.button > 0) return;
+        e.preventDefault();
+        const r = li.getBoundingClientRect();
+        qdrag = { id, li, dy: e.clientY - r.top, ghost: null, x0: e.clientX, y0: e.clientY };
+        try { g.setPointerCapture(e.pointerId); } catch {}
+      });
+      g.addEventListener("pointermove", (e) => {
+        if (!qdrag || qdrag.id !== id) return;
+        if (!qdrag.ghost) {
+          if (Math.hypot(e.clientX - qdrag.x0, e.clientY - qdrag.y0) < 5) return;
+          const r = li.getBoundingClientRect(), gh = li.cloneNode(true);
+          gh.classList.add("ghost", "q-ghost"); gh.style.width = r.width + "px"; gh.style.left = r.left + "px";
+          document.body.appendChild(gh); qdrag.ghost = gh; li.classList.add("lifting");
+        }
+        qdrag.ghost.style.top = (e.clientY - qdrag.dy) + "px";
+        clearMarks();
+        const t = targetAt(e.clientX, e.clientY);
+        if (t && t.li !== li) t.li.classList.add(t.below ? "drop-below" : "drop-above");
+      });
+      const finish = (e, cancel) => {
+        if (!qdrag || qdrag.id !== id) return;
+        const d = qdrag; qdrag = null;
+        if (d.ghost) d.ghost.remove();
+        li.classList.remove("lifting"); clearMarks();
+        if (cancel || !d.ghost) return render();
+        const t = targetAt(e.clientX, e.clientY);
+        if (!t || t.li === li) return render();
+        const from = q.indexOf(id); let to = q.indexOf(t.li.dataset.id) + (t.below ? 1 : 0);
+        if (to > from) to -= 1;
+        moveInQueue(id, to);
+      };
+      g.addEventListener("pointerup", (e) => finish(e, false));
+      g.addEventListener("pointercancel", (e) => finish(e, true));
+    });
+  }
+
+  function udPanelHtml(s) {
+    const ud = s.session.ud, nm = (id) => esc(s.players[id]?.name || "?");
+    let html = `<div class="rr-block"><div class="rr-h">${udRoundOf(s)} \u00b7 ${ud.state === "ready" ? "set, not started" : "on court"}</div>
+      <div class="note">${ud.sitting.length ? `Sitting out this round: <strong>${ud.sitting.map(nm).join(", ")}</strong>` : "Everyone is playing this round."}</div>
+      <div class="note">Winners move one court toward court 1. Losers move one court away. Partners change every round.</div>
+      ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on).</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
+    const where = {};
+    s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
+    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, court: where[id] || null })) });
+    const pts = rows.some(r => r.pf || r.pa);
+    html += `<div class="rr-block"><div class="rr-h">Standings</div><div class="tbl-wrap"><table class="res small">
+      <thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>P</th><th>W</th><th>L</th>${pts ? "<th>+/\u2212</th>" : ""}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated \u00b7 Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td>${r.games}</td><td>${r.wins}</td><td>${lostOf(r)}</td>${pts ? `<td>${diffTxt(r)}</td>` : ""}</tr>`).join("")}</tbody>
+    </table></div></div>`;
+    return html;
+  }
+
+  let historyOpen = false, statusOpen = false, standOpen = false;
+
+  // ---------- live standings (all modes) ----------
+  function standingsHtml(s) {
+    const head = (sub) => `<div class="hist-head"><div><h2>Standings</h2><p class="note">${sub}</p></div><button type="button" id="standBack" class="btn-sun">Back to board</button></div>`;
+    if (!s.session) return head(s.lastSummary && s.lastSummary.rows ? "No session is running. The last session's results are on the board under Session results." : "No session is running. Standings fill in as games finish once a session starts.");
+    const mode = s.session.mode || "std", tour = mode !== "std";
+    const where = {}; s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
+    const rows = rankRows({ mode, rows: Object.entries(s.players).map(([id, p]) => ({ id, name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, status: p.status, sitOut: p.sitOut, hist: p.hist || [] })) });
+    const played = rows.filter(r => r.games).length;
+    const pts = tour && rows.some(r => r.pf || r.pa), dr = rows.some(r => r.draws);
+    const label = { new: "New", winner: "Winner", grinner: "Grinner" };
+    const now = (r) => where[r.id] ? `<span class="status s-sit">On Ct ${where[r.id]}</span>`
+      : r.sitOut ? '<span class="status s-cancel">Sitting out</span>'
+      : label[r.status] ? `<span class="status s-${r.status}">${label[r.status]}</span>` : '<span class="status s-new">Waiting</span>';
+    const form = (r) => r.hist.slice(-5).map(x => `<span class="fm fm-${x}" title="${x === "W" ? "Won" : x === "L" ? "Lost" : "Drew"}">${x}</span>`).join("") || "–";
+    const body = rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${now(r)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf}–${r.pa}</td><td>${diffTxt(r)}</td>` : ""}<td>${pct(r)}</td><td class="fm-cell">${form(r)}</td></tr>`).join("");
+    const rule = tour ? "Ranked by wins, then points difference." : "Ranked by wins, then win %, then games played.";
+    return head(`${played} of ${rows.length} players have finished a game. Updates as each result goes in. ${rule}`) + `<div class="panel"><div class="tbl-wrap"><table class="res stand-tbl">
+      <thead><tr><th>#</th><th>Player</th><th>Now</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${pts ? "<th>Points</th><th>+/−</th>" : ""}<th>Win %</th><th>Last 5</th></tr></thead>
+      <tbody>${body}</tbody></table></div></div>`;
+  }
+
+  // ---------- court status ----------
+  function courtStats(s, now) {
+    const start = s.session.startedAt, elapsed = Math.max(1, now - start), occ = s.session.occ || [];
+    return s.session.courts.map(c => {
+      const iv = occ.filter(o => o.c === c.num).map(o => [Math.max(o.a, start), o.e]);
+      const busyNow = c.allocAt != null;
+      if (busyNow) iv.push([Math.max(c.allocAt, start), now]);
+      iv.sort((a, b) => a[0] - b[0]);
+      let occupied = 0, cursor = start; const gaps = [];
+      for (const [a, e] of iv) { if (a - cursor > 1000) gaps.push(a - cursor); occupied += Math.max(0, e - a); cursor = Math.max(cursor, e); }
+      if (!busyNow && now - cursor > 1000) gaps.push(now - cursor);
+      const ms = (s.matches || []).filter(m => m.court === c.num && m.w !== "X");
+      const timed = ms.filter(m => m.ms != null);
+      const cancelled = (s.matches || []).filter(m => m.court === c.num && m.w === "X").length;
+      let now_ = "Free";
+      if (busyNow && c.startedAt && now < c.startedAt) now_ = `Walk on · ${fmtDur(c.startedAt - now + 999)}`;
+      else if (busyNow) now_ = `In play · ${fmtDur(now - (c.startedAt || c.allocAt))}`;
+      else if (c.done) now_ = "Finished, waiting for the round";
+      else now_ = `Free for ${fmtDur(now - cursor)}`;
+      return { num: c.num, busy: busyNow, now: now_, matches: ms.length, cancelled,
+        avgMatch: timed.length ? timed.reduce((a, m) => a + m.ms, 0) / timed.length : null,
+        avgVac: gaps.length ? gaps.reduce((a, g) => a + g, 0) / gaps.length : null, vacant: gaps.reduce((a, g) => a + g, 0),
+        util: occupied / elapsed, elapsed };
+    });
+  }
+  function statusHtml(s, now) {
+    const head = (sub) => `<div class="hist-head"><div><h2>Session status</h2><p class="note">${sub}</p></div><button type="button" id="statBack" class="btn-sun">Back to board</button></div>`;
+    if (!s.session) return head("No session is running. Session status covers the session in progress.");
+    const st = courtStats(s, now), pct = (x) => `${Math.round(x * 100)}%`, dur = (x) => x == null ? "–" : fmtDur(x);
+    const all = (s.matches || []).filter(m => m.w !== "X" && m.ms != null);
+    const avgMatch = all.length ? all.reduce((a, m) => a + m.ms, 0) / all.length : null;
+    const gapsN = st.filter(x => x.avgVac != null);
+    const avgVac = gapsN.length ? gapsN.reduce((a, x) => a + x.avgVac, 0) / gapsN.length : null;
+    const util = st.reduce((a, x) => a + x.util, 0) / st.length;
+    const tiles = `<div class="stat-tiles">
+      <div class="stile"><div class="t-l">Court utilisation</div><div class="t-v">${pct(util)}</div><div class="t-s">of court time in use this session</div></div>
+      <div class="stile"><div class="t-l">Average match time</div><div class="t-v">${dur(avgMatch)}</div><div class="t-s">${all.length} ${all.length === 1 ? "match" : "matches"} finished</div></div>
+      <div class="stile"><div class="t-l">Average vacancy</div><div class="t-v">${dur(avgVac)}</div><div class="t-s">a court sits empty between matches</div></div>
+      <div class="stile"><div class="t-l">Session time</div><div class="t-v">${fmtHM(now - s.session.startedAt)}</div><div class="t-s">hours and minutes</div></div>
+    </div>`;
+    const rows = st.map(x => `<tr><td class="rn">Court ${x.num}</td><td><span class="status ${x.busy ? "s-sit" : "s-new"}">${x.now}</span></td><td>${x.matches}${x.cancelled ? ` <span class="note">(+${x.cancelled} cancelled)</span>` : ""}</td><td>${dur(x.avgMatch)}</td><td>${dur(x.avgVac)}</td><td>${dur(x.vacant)}</td>
+      <td class="u-cell"><div class="u-wrap"><div class="ubar" role="img" aria-label="${pct(x.util)} in use"><span style="width:${Math.min(100, x.util * 100).toFixed(1)}%"></span></div><b>${pct(x.util)}</b></div></td></tr>`).join("");
+    return head(`Live figures for this session, updating every few seconds. Utilisation counts walk-on time as in use.`) + tiles + `<div class="panel"><div class="tbl-wrap"><table class="res stat-tbl">
+      <thead><tr><th>Court</th><th>Right now</th><th>Matches</th><th>Avg match</th><th>Avg vacancy</th><th>Total empty</th><th>Utilisation</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+  function historyHtml(s) {
+    const list = (s.matches || []).slice().reverse();
+    const modeName = { std: "Court allocation", rr: "Round robin", ud: "Up and down" };
+    const when = s.session ? "this session" : "the last session";
+    const head = `<div class="hist-head"><div><h2>Match history</h2><p class="note">${list.length ? `${list.length} ${list.length === 1 ? "match" : "matches"} in ${when}, newest first.` : `No matches recorded in ${when} yet. Results appear here as soon as they're entered.`}</p></div><button type="button" id="histBack" class="btn-sun">Back to board</button></div>`;
+    if (!list.length) return head;
+    const team = (names, won) => `<span class="${won ? "h-won" : ""}">${names.map(esc).join(" & ")}</span>`;
+    // Court allocation mode records no scores, so the Score column only appears for tournament matches.
+    const showScore = list.some(m => m.mode !== "std");
+    const rows = list.map((m, i) => {
+      const t = new Date(m.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      const res = m.w === "X" ? '<span class="status s-cancel">Cancelled</span>' : m.w === "D" ? '<span class="status s-sit">Draw</span>' : `<span class="status s-new">${m.singles ? (m.w === "A" ? m.A[0] : m.B[0]) : m.w === "A" ? "Team A" : "Team B"} won</span>`;
+      const score = m.sa != null ? `${m.sa}–${m.sb}` : "–";
+      return `<tr><td>${list.length - i}</td><td class="h-t">${t}</td><td>Ct ${m.court}${m.round ? `<div class="note">Round ${m.round}</div>` : ""}${m.singles ? `<div class="note">Singles</div>` : ""}</td><td class="h-team">${team(m.A, m.w === "A")}</td>${showScore ? `<td class="h-score">${score}</td>` : ""}<td class="h-team">${team(m.B, m.w === "B")}</td><td>${res}</td><td>${m.ms != null ? fmtDur(m.ms) : "–"}</td></tr>`;
+    }).join("");
+    const modes = [...new Set(list.map(m => m.mode))].map(x => modeName[x] || x).join(", ");
+    return `${head}<div class="panel"><div class="tbl-wrap"><table class="res hist-tbl">
+      <caption class="sk-cap">${esc(modes)}</caption>
+      <thead><tr><th>#</th><th>Time</th><th>Court</th><th>Team A</th>${showScore ? '<th class="h-score-h">Score</th>' : ""}<th>Team B</th><th>Result</th><th>Length</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+  }
+
+  function render() {
+    if (drag || qdrag) return;
+    const hv = $("historyView"), sv = $("statusView"), dv = $("standView");
+    hv.hidden = !historyOpen; sv.hidden = !statusOpen; dv.hidden = !standOpen;
+    document.querySelector(".layout").hidden = historyOpen || statusOpen || standOpen;
+    $("standBtn").textContent = standOpen ? "Back to board" : "Standings";
+    if (standOpen) {
+      dv.innerHTML = standingsHtml(state);
+      $("standBack").addEventListener("click", () => { standOpen = false; render(); });
+    }
+    $("histBtn").textContent = historyOpen ? "Back to board" : "Match history";
+    $("statBtn").textContent = statusOpen ? "Back to board" : "Session status";
+    if (statusOpen) {
+      sv.innerHTML = statusHtml(state, Date.now());
+      $("statBack").addEventListener("click", () => { statusOpen = false; render(); });
+    }
+    if (historyOpen) {
+      hv.innerHTML = historyHtml(state);
+      $("histBack").addEventListener("click", () => { historyOpen = false; render(); });
+    }
+    const s = state, live = !!s.session, rrLive = isRR(s), udLive = isUD(s), tour = rrLive || udLive;
+    $("sessPill").textContent = live ? (rrLive ? "Round robin live" : udLive ? "Up and down live" : "Court allocation live") : "No session";
+    $("sessPill").className = "pill" + (live ? " live" : "");
+    $("subline").innerHTML = !connected ? "Connecting…" : live
+      ? `Started ${esc(new Date(s.session.startedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))} · Session time (hh:mm) <b class="sess-clock" id="sessClock" data-start="${s.session.startedAt}">${fmtHM(Date.now() - s.session.startedAt)}</b>`
+      : "Waiting for the admin to start tonight's session";
+    setAdminLabel();
+    $("readonlyBanner").hidden = canWrite || !connected;
+    $("addForm").hidden = !canWrite || tour;
+    $("endBtn").hidden = !(live && canWrite);
+    const ub = $("undoBar"), la = s.lastAction;
+    if (live && canWrite && la && !arranging) {
+      ub.hidden = false;
+      const what = la.cancelled ? "match cancelled" : la.batch ? "" : la.draw ? `drawn${la.score ? " " + esc(la.score) : ""}` : `${esc(la.winners.join(" & "))} won${la.score ? " " + esc(la.score) : ""}`;
+      ub.innerHTML = `<span>${la.batch ? `${esc(la.label)} results saved.` : `Last result: court ${la.court}, ${what}.`}${la.roundEnded ? " That finished the round, so the next round is set." : ""}</span><button id="undoBtn">Undo</button>`;
+      $("undoBtn").addEventListener("click", undoLast);
+    } else ub.hidden = true;
+
+    // round robin progress bar
+    const rbar = $("roundBar");
+    const ae = document.activeElement, keepTm = $("udTmMin") && (ae === $("udTmMin") || ae === $("udTmSec")) ? { m: $("udTmMin").value, s: $("udTmSec").value, focus: ae.id } : null;
+    if (rrLive && !arranging) {
+      const R = s.session.rr.rounds, done = R.filter(r => r.status === "done").length;
+      const cur = R.find(r => r.status === "playing"), ci = R.indexOf(cur);
+      const mDone = R.reduce((a, r) => a + r.matches.filter(m => m.status === "done").length, 0), mTot = R.reduce((a, r) => a + r.matches.length, 0);
+      rbar.hidden = false;
+      if (cur) {
+        const left = cur.matches.filter(m => m.status !== "done").length;
+        rbar.innerHTML = `<span><b>Round ${ci + 1} of ${R.length}</b> · ${left} ${left === 1 ? "match" : "matches"} still playing · ${mDone} of ${mTot} matches played</span>`;
+      } else if (done < R.length) {
+        rbar.innerHTML = `<span><b>${done ? `Round ${done} of ${R.length} complete.` : "Ready to start."}</b> Round ${done + 1} is next.</span>${canWrite ? `<button class="btn-sun" id="allocRound">Allocate round ${done + 1}</button>` : ""}`;
+      } else {
+        rbar.innerHTML = `<span><b>All ${R.length} rounds played.</b> End the session to see the final leaderboard.</span>${canWrite ? `<button class="btn-danger" id="rbEnd">End session</button>` : ""}`;
+      }
+      $("allocRound") && $("allocRound").addEventListener("click", (e) => { e.currentTarget.disabled = true; allocateRound(); });
+      $("rbEnd") && $("rbEnd").addEventListener("click", endSession);
+    } else if (udLive && !arranging) {
+      if (keepTm && s.session.ud.state === "ready") {
+        // Someone is typing a round time: leave the bar alone until they finish.
+      } else {
+        const ud = s.session.ud, courtsIn = s.session.courts.filter(c => c.teamA), done = courtsIn.filter(c => c.done).length;
+        const games = Object.values(s.players).map(p => p.games || 0), even = games.length && Math.min(...games) === Math.max(...games);
+        rbar.hidden = false;
+        if (ud.state === "ready") {
+          const cy = udCycle(Object.keys(s.players).length, ud.per * 4);
+          const nextEven = Math.ceil(Math.max(ud.completed, 1) / cy.rounds) * cy.rounds;
+          const evenTxt = ud.completed && even ? ` Everyone has played ${games[0]} ${games[0] === 1 ? "game" : "games"}, so this is a fair place to finish.`
+            : cy.sit ? ` Games are level after round ${nextEven}.` : "";
+          rbar.innerHTML = `<span><b>${udRoundOf(s)} is set.</b> ${ud.timed ? "Timed round with a 10 second setup." : "Untimed round."}${evenTxt}</span>${ud.timed && canWrite ? `<div class="arr-ctl time-ctl"><span>Round time</span><input type="number" id="udTmMin" min="0" max="90" inputmode="numeric" aria-label="Minutes" value="${Math.floor(udSecs(ud) / 60)}"><span>min</span><input type="number" id="udTmSec" min="0" max="59" step="5" inputmode="numeric" aria-label="Seconds" value="${udSecs(ud) % 60}"><span>sec</span></div>` : ud.timed ? `<b>${fmtMS(udSecs(ud))}</b>` : ""}${canWrite ? `<button class="btn-sun" id="udStart">Start round ${ud.round}</button>` : ""}`;
+        } else {
+          rbar.innerHTML = `<span><b>${udRoundOf(s)}</b> \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${ud.timed && canWrite ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}`;
+        }
+        $("udStart") && $("udStart").addEventListener("click", (e) => { e.currentTarget.disabled = true; startUDRound(); });
+      if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Timer only"}</button>`);
+      $("udFocus").addEventListener("click", () => setTimerOnly(!timerOnly));
+        $("udEndRound") && $("udEndRound").addEventListener("click", endRoundUD);
+        if ($("udTmMin")) {
+          const apply = () => {
+            const m = Math.max(0, Math.min(90, parseInt($("udTmMin").value, 10) || 0)), sec = Math.max(0, Math.min(59, parseInt($("udTmSec").value, 10) || 0));
+            setUDTime(m * 60 + sec);
+          };
+          $("udTmMin").addEventListener("change", apply); $("udTmSec").addEventListener("change", apply);
+        }
+      }
+    } else rbar.hidden = true;
+
+    document.body.classList.toggle("timer-only", timerOnly && udLive && !arranging);
+
+    // with no session running, the queue sits directly under the courts column
+    document.querySelector(".layout").classList.toggle("stacked", !live && !arranging);
+
+    // courts
+    const box = $("courts");
+    box.style.gridTemplateColumns = ""; box.classList.remove("laid");
+    $("arrangeBar").hidden = !arranging;
+    if (arranging) {
+      renderArrange(box);
+      $("courtSummary").textContent = "Arranging courts";
+    } else if (!live) {
+      box.innerHTML = `<div class="court-card" style="grid-column:1/-1">
+        <p style="margin:0;font-weight:600">No session running.</p>
+        <p style="margin:0;color:var(--muted)">Players can join the queue now. When the admin starts the session, courts start empty and are filled one at a time.</p>
+        ${canWrite ? `<div class="row" style="flex:none;justify-content:flex-start"><button class="btn-sun" id="startBtn" style="flex:none">Start session</button>${s.lastSummary && s.lastSummary.rows ? (s.lastSummary.hidden ? `<button id="showRes" class="btn-ghost" style="flex:none">Show last results</button>` : `<button id="hideRes" class="btn-ghost" style="flex:none">Hide results</button>`) : ""}</div>` : ""}
+      </div>${s.lastSummary && !s.lastSummary.hidden ? resultsHtml(s.lastSummary) : ""}`;
+      $("hideRes") && $("hideRes").addEventListener("click", () => setResultsHidden(true));
+      $("showRes") && $("showRes").addEventListener("click", () => setResultsHidden(false));
+      $("startBtn") && $("startBtn").addEventListener("click", startSession);
+      $("copyRes") && $("copyRes").addEventListener("click", () => copyResults(s.lastSummary));
+      $("courtSummary").textContent = "";
+    } else {
+      const courts = s.session.courts;
+      const busy = courts.filter(c => c.teamA).length;
+      $("courtSummary").textContent = `${busy} of ${courts.length} in play`;
+      const L0 = layoutFor(courts.length), L = L0;
+      if (L) { box.style.gridTemplateColumns = `repeat(${L.cols}, minmax(0,1fr))`; box.classList.add("laid"); }
+      const list = L0 ? courts.slice().sort((a, b) => cellKey(L0, a.num) - cellKey(L0, b.num)) : courts;
+      const keepA = $("scA") ? $("scA").value : "", keepB = $("scB") ? $("scB").value : "";
+      box.innerHTML = list.map(c => {
+        const at = L ? ` style="grid-row:${L.pos[c.num][0] + 1};grid-column:${L.pos[c.num][1] + 1}"` : "";
+        if (!c.teamA) {
+          const waitingN = eligible(s).length, enough = waitingN >= 4, enoughS = waitingN >= 2;
+          const rrReady = rrLive && !s.session.rr.rounds.some(r => r.status === "playing") && s.session.rr.rounds.some(r => r.status !== "done");
+          const ready = udLive ? false : rrLive ? rrReady : enoughS;
+          const msg = udLive ? "Not used: not enough players" : rrLive ? (ready ? "Ready for the next 4" : "Free until the next round") : enough ? "Ready for the next 4" : enoughS ? "Ready for singles" : "Waiting for players";
+          return `<div class="court-card"${at}>
+          <div class="court-top"><div class="court-num">Court ${c.num}</div><span class="status s-new">Free</span></div>
+          ${c.lastMatchMs ? `<div class="court-time">Last match ${fmtDur(c.lastMatchMs)}</div>` : ""}
+          <div class="court empty"><div class="net"></div><span class="msg${ready ? " ready" : ""}">${msg}</span></div>
+          ${canWrite && !tour ? `<div class="alloc-grid">
+            <button class="btn-sun" data-alloc="${c.num}" data-n="4" ${enough ? "" : "disabled"}>Allocate Doubles</button><button data-manual="${c.num}" data-n="4" ${enough ? "" : "disabled"}>Manual doubles allocation</button>
+            <button class="btn-singles" data-alloc="${c.num}" data-n="2" ${enoughS ? "" : "disabled"}>Allocate Singles</button><button data-manual="${c.num}" data-n="2" ${enoughS ? "" : "disabled"}>Manual Singles</button>
+          </div>` : ""}</div>`;
+        }
+        const ud = udLive ? s.session.ud : null, d = udLive ? c.done : null;
+        const panel = freeingCourt === c.num ? (tour ? `<div class="free-panel">
+            <p>Score on court ${c.num}</p>
+            <div class="score-row">
+              <label>${names(c.teamA)}<input type="number" id="scA" min="0" max="99" inputmode="numeric"></label>
+              <label>${names(c.teamB)}<input type="number" id="scB" min="0" max="99" inputmode="numeric"></label>
+            </div>
+            <p class="note" id="scWinner">Enter both scores. The higher score wins.</p>
+            <div class="win-btns">
+              <button data-save="${c.num}" class="btn-sun" id="scSave" disabled>Save result</button>
+              ${rrLive ? `<button data-draw="${c.num}">Draw</button>` : ""}
+            </div>
+            <p class="err" id="scErr" hidden></p>
+            <button data-cancel class="btn-ghost">Cancel</button></div>` : `<div class="free-panel">
+            <p>Who won on court ${c.num}?</p>
+            <div class="win-btns">
+              <button data-win="A" data-court="${c.num}" class="btn-sun">${names(c.teamA)}</button>
+              <button data-win="B" data-court="${c.num}" class="btn-sun">${names(c.teamB)}</button>
+            </div>
+            <button data-cancel class="btn-ghost">Cancel</button></div>`)
+          : (canWrite && (!udLive || (ud.state === "playing" && !d && !ud.timed)) ? `${!tour && Date.now() < c.startedAt ? `<button data-unalloc="${c.num}" data-until="${c.startedAt}" class="btn-ghost">Unallocate</button>` : ""}<button data-free="${c.num}" class="btn-end">End match</button>${!tour ? `<button data-cancelm="${c.num}" data-from="${c.startedAt}" class="btn-ghost"${Date.now() < c.startedAt ? " hidden" : ""}>Cancel match</button>` : ""}` : "");
+        const udLabel = !udLive ? "" : ud.state === "ready" ? `<span class="live-msg get">${udRoundOf(s)}<span class="mt">Get ready</span></span>`
+          : d ? `<span class="live-msg fin">Finished${d.scoreA != null ? ` ${d.scoreA}\u2013${d.scoreB}` : ""}<span class="mt">Waiting for other courts</span></span>`
+          : freeingCourt === c.num ? `<span class="live-msg ending">Entering result</span>`
+          : `<span class="live-msg">${udRoundOf(s)}<span class="mt">${ud.timed ? "Match in progress" : `<b class="udclock">${udClock(ud, Date.now())}</b>`}</span></span>`;
+        const sgl = c.teamA.length === 1;
+        const tagA = d ? (d.winner === "A" ? "Won" : "Lost") : sgl ? "Player A" : "Team A", tagB = d ? (d.winner === "B" ? "Won" : "Lost") : sgl ? "Player B" : "Team B";
+        return `<div class="court-card"${at}>
+          <div class="court-top"><div class="court-num">Court ${c.num}</div></div>
+          <div class="court">
+            <div class="centre t"></div><div class="centre b"></div><div class="net"></div>
+            ${udLive ? udLabel : `<span class="live-msg${freeingCourt === c.num ? " ending" : Date.now() < c.startedAt ? " walk" : ""}"><span class="lm-t">${freeingCourt === c.num ? "Entering result" : Date.now() < c.startedAt ? "Walk on time" : "Match in progress"}</span><span class="mt" ${freeingCourt === c.num ? "" : `data-start="${c.startedAt}"`}><b>${Date.now() < c.startedAt && freeingCourt !== c.num ? fmtDur(c.startedAt - Date.now() + 999) : fmtDur((freeingCourt === c.num && frozenAt ? frozenAt : Date.now()) - c.startedAt)}</b>${freeingCourt === c.num ? " (stopped)" : ""}</span></span>`}
+            <div class="side">${sgl && !d ? '<span class="tag sgl-tag">Singles</span>' : ""}<span class="tag">${tagA}</span><div class="names">${c.teamA.map(chip).join("")}</div></div>
+            <div class="side"><span class="tag">${tagB}</span><div class="names">${c.teamB.map(chip).join("")}</div></div>
+          </div>${panel}</div>`;
+      }).join("");
+      box.querySelectorAll("[data-cancelm]").forEach(b => b.addEventListener("click", () => confirmCancel(+b.dataset.cancelm)));
+      box.querySelectorAll("[data-unalloc]").forEach(b => b.addEventListener("click", () => { b.disabled = true; unallocate(+b.dataset.unalloc); }));
+      box.querySelectorAll("[data-manual]").forEach(b => b.addEventListener("click", () => manualAllocate(+b.dataset.manual, +b.dataset.n)));
+      box.querySelectorAll("[data-alloc]").forEach(b => b.addEventListener("click", () => { b.disabled = true; allocateCourt(+b.dataset.alloc, +b.dataset.n); }));
+      box.querySelectorAll("[data-free]").forEach(b => b.addEventListener("click", () => { freeingCourt = +b.dataset.free; frozenAt = Date.now(); render(); }));
+      if ($("scA")) { $("scA").value = keepA; $("scB").value = keepB; }
+      box.querySelectorAll("[data-win]").forEach(b => b.addEventListener("click", () => courtFree(+b.dataset.court, b.dataset.win)));
+      const readScores = () => {
+        const ra = $("scA").value.trim(), rb = $("scB").value.trim();
+        return { ra, rb, a: parseInt(ra, 10), b: parseInt(rb, 10) };
+      };
+      const scoreHint = () => {
+        const c = s.session.courts.find(x => x.num === freeingCourt); if (!c || !$("scA")) return;
+        const { a, b } = readScores(), ok = Number.isFinite(a) && Number.isFinite(b);
+        $("scErr").hidden = true;
+        $("scSave").disabled = !ok || a === b;
+        $("scWinner").innerHTML = !ok ? "Enter both scores. The higher score wins."
+          : a === b ? (udLive ? "Scores are level. Up and down needs a winner, so play a deciding point." : "Scores are level. Tap Draw to record a draw.")
+          : `Winner: <strong>${names(a > b ? c.teamA : c.teamB)}</strong>`;
+      };
+      if ($("scA")) { $("scA").addEventListener("input", scoreHint); $("scB").addEventListener("input", scoreHint); scoreHint(); }
+      box.querySelectorAll("[data-save]").forEach(b => b.addEventListener("click", () => {
+        const { a, b: bb } = readScores();
+        if (!Number.isFinite(a) || !Number.isFinite(bb) || a === bb) return;
+        courtFree(+b.dataset.save, a > bb ? "A" : "B", a, bb);
+      }));
+      box.querySelectorAll("[data-draw]").forEach(b => b.addEventListener("click", () => {
+        const { ra, rb, a, b: bb } = readScores(), err = $("scErr");
+        if (ra === "" && rb === "") return courtFree(+b.dataset.draw, "D");
+        if (!Number.isFinite(a) || !Number.isFinite(bb) || a !== bb) { err.textContent = "A draw needs level scores. Fix the scores or clear both boxes."; err.hidden = false; return; }
+        courtFree(+b.dataset.draw, "D", a, bb);
+      }));
+      box.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { freeingCourt = null; frozenAt = null; render(); }));
+    }
+
+    // tournament panel replaces the queue during a round robin
+    $("queueH").textContent = tour ? "Tournament" : "Queue";
+    $("legend").hidden = tour;
+    $("rrPanel").hidden = !tour;
+    if (tour) {
+      $("queue").innerHTML = ""; $("nextUp").hidden = true; $("addErr").hidden = true;
+      $("queueCount").textContent = `${Object.keys(s.players).length} players · entries closed`;
+      $("rrPanel").innerHTML = udLive ? udPanelHtml(s) : rrPanelHtml(s);
+      return;
+    }
+
+    // queue
+    const q = waiting(s);
+    const playing = Object.values(s.players).filter(p => p.status === "playing").length;
+    const sitting = q.filter(id => s.players[id].sitOut).length, ready = q.length - sitting;
+    $("queueCount").textContent = `${ready} waiting${sitting ? ` · ${sitting} sitting out` : ""}${playing ? ` · ${playing} playing` : ""}`;
+    const nx = $("nextUp");
+    if (live && q.length) {
+      const pick = pickFour(s);
+      nx.hidden = false;
+      nx.innerHTML = pick
+        ? `Next to be allocated: <strong>${names(pick.teamA)}</strong> vs <strong>${names(pick.teamB)}</strong>`
+        : `Need ${4 - ready} more ${4 - ready === 1 ? "player" : "players"} to fill a court${sitting ? " (players sitting out aren't counted)" : ""}.`;
+    } else nx.hidden = true;
+    const admin = isAdmin();
+    $("queue").innerHTML = q.length ? q.map((id, i) => {
+      const p = s.players[id];
+      const label = { new: "New", winner: "Winner", grinner: "Grinner" }[p.status];
+      const meta = p.sitOut ? "Sitting out · keeps their place" : p.games ? `${p.games} played · ${p.wins || 0} won` : "Waiting for first game";
+      return `<li data-id="${id}"${p.sitOut ? ' class="sitting"' : ""}><span class="pos">${admin ? `<span class="grip" data-drag="${id}" tabindex="0" role="button" aria-label="Move ${esc(p.name)}. Drag, or use the up and down arrow keys">≡</span>` : ""}${i + 1}</span>
+        <div style="min-width:0"><div class="pname">${esc(p.name)}</div><div class="pmeta">${meta}</div></div>
+        ${admin ? `<select class="status status-sel s-${p.status}" data-st="${id}" aria-label="Status for ${esc(p.name)}">${["new", "winner", "grinner"].map(v => `<option value="${v}"${v === p.status ? " selected" : ""}>${{ new: "New", winner: "Winner", grinner: "Grinner" }[v]}</option>`).join("")}</select>` : `<span class="status s-${p.status}">${label}</span>`}
+        <div class="acts">${canWrite ? `<button class="x ${p.sitOut ? "btn-back" : "btn-sun"}" data-sit="${id}" aria-pressed="${p.sitOut ? "true" : "false"}" aria-label="${p.sitOut ? "Bring back" : "Sit out"} ${esc(p.name)}">${p.sitOut ? "Back in" : "Sit out"}</button>` : ""}${admin ? `<button class="x btn-ghost" data-rm="${id}" aria-label="Remove ${esc(p.name)}">Remove</button>` : ""}</div></li>`;
+    }).join("") : "";
+    if (!q.length) $("queue").innerHTML = `<li style="display:block;border:0"><p class="empty-q">${connected ? "Nobody waiting. Type your name above to join." : "Loading the queue…"}</p></li>`;
+    $("queue").classList.toggle("reorder", admin);
+    bindQueueDrag(q);
+    if (qFocus) { const g = $("queue").querySelector(`[data-drag="${qFocus}"]`); qFocus = null; g && g.focus(); }
+    $("queue").querySelectorAll("[data-sit]").forEach(b => b.addEventListener("click", () => { b.disabled = true; toggleSitOut(b.dataset.sit); }));
+    $("queue").querySelectorAll("[data-st]").forEach(sel => sel.addEventListener("change", () => setStatus(sel.dataset.st, sel.value)));
+    $("queue").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => removePlayer(b.dataset.rm)));
+  }
+
+  // ---------- wiring ----------
+  $("addForm").addEventListener("submit", (e) => { e.preventDefault(); addPlayer($("nameInput").value); });
+  $("adminBtn").addEventListener("click", adminMenu);
+  $("histBtn").addEventListener("click", () => { historyOpen = !historyOpen; statusOpen = false; standOpen = false; render(); window.scrollTo(0, 0); });
+  $("statBtn").addEventListener("click", () => { statusOpen = !statusOpen; historyOpen = false; standOpen = false; render(); window.scrollTo(0, 0); });
+  $("standBtn").addEventListener("click", () => { standOpen = !standOpen; historyOpen = false; statusOpen = false; render(); window.scrollTo(0, 0); });
+  $("endBtn").addEventListener("click", endSession);
+  $("cMinus").addEventListener("click", () => resizeLayout(-1, 0));
+  $("cPlus").addEventListener("click", () => resizeLayout(1, 0));
+  $("rMinus").addEventListener("click", () => resizeLayout(0, -1));
+  $("rPlus").addEventListener("click", () => resizeLayout(0, 1));
+  $("arrReset").addEventListener("click", () => { selCourt = null; saveLayout(null); toast("Layout reset"); });
+  $("arrDone").addEventListener("click", () => { arranging = false; selCourt = null; render(); toast("Court layout saved"); });
+  setInterval(() => {
+    const now = Date.now();
+    const sc = $("sessClock"); if (sc) sc.textContent = fmtHM(now - +sc.dataset.start);
+    if (adminUntil && now >= adminUntil) { adminUntil = 0; render(); toast("Admin locked again after 30 minutes"); }
+    if (statusOpen && Math.floor(now / 1000) % 5 === 0) render();
+    if (isUD(state)) {
+      document.querySelectorAll(".udclock").forEach(e => { e.textContent = udClock(state.session.ud, now); });
+      document.querySelectorAll(".udbig").forEach(e => { const t = udParts(state.session.ud, now); e.querySelector(".udlbl").textContent = t.label; e.querySelector(".udnum").textContent = t.value; e.classList.toggle("up", t.up); });
+    }
+    document.querySelectorAll("[data-until]").forEach(b => { if (now >= +b.dataset.until) b.remove(); });
+    document.querySelectorAll("[data-from]").forEach(b => { if (now >= +b.dataset.from) b.hidden = false; });
+    document.querySelectorAll(".mt[data-start] b").forEach(b => {
+      const st = +b.parentNode.dataset.start, lm = b.closest(".live-msg"), t = lm && lm.querySelector(".lm-t");
+      if (now < st) { b.textContent = fmtDur(st - now + 999); if (t) { t.textContent = "Walk on time"; lm.classList.add("walk"); } }
+      else { b.textContent = fmtDur(now - st); if (t && lm.classList.contains("walk")) { t.textContent = "Match in progress"; lm.classList.remove("walk"); } }
+    });
+  }, 1000);
+  // ---------- round-end beeps (timed up and down) ----------
+  // Browsers only allow sound after someone has tapped or typed on the page, so the first touch unlocks it.
+  let actx = null;
+  const unlockAudio = () => {
+    try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch {}
+  };
+  document.addEventListener("pointerdown", unlockAudio, true);
+  document.addEventListener("keydown", unlockAudio, true);
+  function beep(freq, ms) {
+    if (!actx || actx.state !== "running") return;
+    const t = actx.currentTime, d = ms / 1000, o = actx.createOscillator(), g = actx.createGain();
+    o.type = "square"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.01);
+    g.gain.setValueAtTime(0.35, t + d - 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + d + 0.02);
+  }
+  const beeped = new Set();
+  setInterval(() => {
+    if (!isUD(state)) return;
+    const ud = state.session.ud;
+    if (ud.state !== "playing" || !ud.timed || !ud.endAt) return;
+    const left = ud.endAt - Date.now(), key = ud.round + ":" + ud.endAt;
+    if (left > 0 && left <= 3000) {
+      const k = key + ":" + Math.ceil(left / 1000);
+      if (!beeped.has(k)) { beeped.add(k); beep(880, 180); }
+    } else if (left <= 0 && left > -1500) {
+      const k = key + ":end";
+      if (!beeped.has(k)) { beeped.add(k); beep(660, 1400); }
+    }
+  }, 100);
+
+  render();
+
+  (async () => {
+    db = await window.claude?.use?.("db");
+    if (!db) {
+      connected = false; canWrite = false;
+      $("subline").textContent = "Not connected to the live board.";
+      const rb = $("readonlyBanner"); rb.hidden = false;
+      rb.innerHTML = "<p><strong>Sign in to see the live board.</strong> Open this page from its claude.ai link while signed in to a Claude account it has been shared with, then reload. Private or incognito windows start signed out.</p>";
+      return;
+    }
+    stateRef = db.doc("club/state");
+    settingsRef = db.doc("club/settings");
+    layoutRef = db.doc("club/layout");
+    try {
+      const user = await window.claude.use("user");
+      const w = user ? await user.can("data.write") : null;
+      if (w === false) canWrite = false;
+    } catch {}
+    stateRef.onSnapshot((snap) => {
+      connected = true;
+      const d = snap.exists ? snap.data() : null;
+      state = d ? { session: d.session || null, players: d.players || {}, lastAction: d.lastAction || null, lastSummary: d.lastSummary || null, matches: d.matches || [] } : EMPTY();
+      layoutDoc = d && d.layout && d.layout.cols ? JSON.parse(JSON.stringify(d.layout)) : null;
+      const fc = freeingCourt !== null ? state.session?.courts.find(c => c.num === freeingCourt) : null;
+      if (freeingCourt !== null && (!fc || !fc.teamA || fc.done || (isUD(state) && state.session.ud.state !== "playing"))) { freeingCourt = null; frozenAt = null; }
+      render();
+    }, () => { $("subline").textContent = "Lost connection to the board. Reload the page."; });
+    settingsRef.onSnapshot((snap) => { settings = snap.exists ? { ...snap.data() } : {}; render(); });
+  })();
+})();
+</script>
+</body></html>
